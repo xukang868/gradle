@@ -31,6 +31,7 @@ import org.gradle.api.file.FileCollection
 import org.gradle.api.internal.FeaturePreviews
 import org.gradle.api.internal.artifacts.DefaultModuleVersionIdentifier
 import org.gradle.api.internal.artifacts.ivyservice.projectmodule.ProjectDependencyPublicationResolver
+import org.gradle.api.internal.attributes.ImmutableAttributes
 import org.gradle.api.internal.component.SoftwareComponentInternal
 import org.gradle.api.internal.component.UsageContext
 import org.gradle.api.internal.file.TestFiles
@@ -132,6 +133,7 @@ class DefaultIvyPublicationTest extends Specification {
         moduleDependency.targetConfiguration >> "dep-configuration"
         moduleDependency.artifacts >> [artifact]
         moduleDependency.excludeRules >> [exclude]
+        moduleDependency.attributes >> ImmutableAttributes.EMPTY
 
         and:
         publication.from(componentWithDependency(moduleDependency))

@@ -17,6 +17,7 @@
 
 package org.gradle.api.publish.ivy
 
+import org.gradle.api.publish.ivy.internal.publication.DefaultIvyPublication
 import org.gradle.test.fixtures.ivy.IvyJavaModule
 import spock.lang.Issue
 import spock.lang.Unroll
@@ -46,7 +47,7 @@ class IvyPublishJavaIntegTest extends AbstractIvyPublishIntegTest {
                 }
             }
 
-            $dependencies            
+            $dependencies
 """)
 
         when:
@@ -569,7 +570,7 @@ class IvyPublishJavaIntegTest extends AbstractIvyPublishIntegTest {
 
             publishing {
                 publications {
-                    maven(IvyPublication) {
+                    ivy(IvyPublication) {
                         from components.java
                     }
                 }
@@ -580,6 +581,7 @@ class IvyPublishJavaIntegTest extends AbstractIvyPublishIntegTest {
         run "publish"
 
         then:
+        outputContains(DefaultIvyPublication.INCOMPATIBLE_FEATURE)
         javaLibrary.assertPublished()
 
         javaLibrary.parsedIvy.configurations.keySet() == ["compile", "runtime", "default"] as Set
@@ -645,7 +647,7 @@ class IvyPublishJavaIntegTest extends AbstractIvyPublishIntegTest {
 
             publishing {
                 publications {
-                    maven(IvyPublication) {
+                    ivy(IvyPublication) {
                         from components.java
                     }
                 }
@@ -656,6 +658,7 @@ class IvyPublishJavaIntegTest extends AbstractIvyPublishIntegTest {
         succeeds "publish"
 
         then:
+        outputContains(DefaultIvyPublication.INCOMPATIBLE_FEATURE)
         javaLibrary.assertPublished()
         javaLibrary.parsedIvy.configurations.keySet() == ["compile", "runtime", "default"] as Set
         javaLibrary.parsedIvy.assertDependsOn("commons-collections:commons-collections:@runtime")
@@ -724,6 +727,7 @@ class IvyPublishJavaIntegTest extends AbstractIvyPublishIntegTest {
         run "publish"
 
         then:
+        outputContains(DefaultIvyPublication.INCOMPATIBLE_FEATURE)
         javaLibrary.assertPublished()
 
         javaLibrary.parsedIvy.configurations.keySet() == ["compile", "runtime", "default"] as Set
@@ -780,6 +784,7 @@ class IvyPublishJavaIntegTest extends AbstractIvyPublishIntegTest {
         run "publish"
 
         then:
+        outputContains(DefaultIvyPublication.INCOMPATIBLE_FEATURE)
         javaLibrary.assertPublished()
 
         and:
@@ -851,6 +856,7 @@ class IvyPublishJavaIntegTest extends AbstractIvyPublishIntegTest {
         run "publish"
 
         then:
+        outputContains(DefaultIvyPublication.INCOMPATIBLE_FEATURE)
         javaLibrary.assertPublished()
 
         and:
