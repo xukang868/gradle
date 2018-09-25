@@ -16,6 +16,7 @@
 
 package org.gradle.api.publish.maven.internal.publication;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Objects;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
@@ -42,6 +43,7 @@ import org.gradle.api.internal.artifacts.DefaultExcludeRule;
 import org.gradle.api.internal.artifacts.DefaultModuleVersionIdentifier;
 import org.gradle.api.internal.artifacts.dsl.dependencies.PlatformSupport;
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.parser.MavenVersionUtils;
+import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.strategy.MavenVersionSelectorScheme;
 import org.gradle.api.internal.artifacts.ivyservice.projectmodule.ProjectDependencyPublicationResolver;
 import org.gradle.api.internal.attributes.ImmutableAttributes;
 import org.gradle.api.internal.attributes.ImmutableAttributesFactory;
@@ -49,6 +51,8 @@ import org.gradle.api.internal.component.SoftwareComponentInternal;
 import org.gradle.api.internal.component.UsageContext;
 import org.gradle.api.internal.file.FileCollectionFactory;
 import org.gradle.api.internal.project.ProjectInternal;
+import org.gradle.api.logging.Logger;
+import org.gradle.api.logging.Logging;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.publish.internal.CompositePublicationArtifactSet;
 import org.gradle.api.publish.internal.DefaultPublicationArtifactSet;
@@ -85,6 +89,7 @@ import static org.gradle.api.internal.FeaturePreviews.Feature.GRADLE_METADATA;
 
 public class DefaultMavenPublication implements MavenPublicationInternal {
 
+    private final static Logger LOG = Logging.getLogger(DefaultMavenPublication.class);
     /*
      * Maven supports wildcards in exclusion rules according to:
      * http://www.smartjava.org/content/maven-and-wildcard-exclusions
@@ -105,6 +110,8 @@ public class DefaultMavenPublication implements MavenPublicationInternal {
             return left.getUsage().getName().compareTo(right.getUsage().getName());
         }
     };
+    @VisibleForTesting
+    public static final String INCOMPATIBLE_FEATURE = " uses dependency management feature(s) like dynamic versions with 'latest.<status>' or '1.+' that will most likely make the produced Maven pom incomplete and/or not consumable by Maven compatible solutions.";
 
     private final String name;
     private final MavenPomInternal pom;
@@ -233,6 +240,7 @@ public class DefaultMavenPublication implements MavenPublicationInternal {
         if (component == null) {
             return;
         }
+        boolean unsupportedDependencyFeatureUsed = false;
         Set<ArtifactKey> seenArtifacts = Sets.newHashSet();
         Set<ModuleDependency> seenDependencies = Sets.newHashSet();
         Set<DependencyConstraint> seenConstraints = Sets.newHashSet();
@@ -253,6 +261,7 @@ public class DefaultMavenPublication implements MavenPublicationInternal {
                     if (dependency instanceof ProjectDependency) {
                         addProjectDependency((ProjectDependency) dependency, globalExcludes, dependencies);
                     } else {
+                        unsupportedDependencyFeatureUsed |= isVersionMavenIncompatible(dependency.getVersion());
                         if (PlatformSupport.isTargettingPlatform(dependency)) {
                             addImportDependencyConstraint(dependency);
                         } else {
@@ -267,7 +276,26 @@ public class DefaultMavenPublication implements MavenPublicationInternal {
                     addDependencyConstraint(dependency, dependencyConstraints);
                 }
             }
+            if (!usageContext.getCapabilities().isEmpty()) {
+                unsupportedDependencyFeatureUsed = true;
+            }
         }
+        if (unsupportedDependencyFeatureUsed) {
+            LOG.lifecycle(getDisplayName() + INCOMPATIBLE_FEATURE);
+        }
+    }
+
+    private boolean isVersionMavenIncompatible(String version) {
+        if (version == null) {
+            return false;
+        }
+        if (version.contains("+")) {
+            return true;
+        }
+        if (version.contains("latest")) {
+            return MavenVersionSelectorScheme.isSubstituableLatest(version);
+        }
+        return false;
     }
 
     private void addImportDependencyConstraint(ModuleDependency dependency) {
