@@ -139,7 +139,7 @@ public class DefaultConfigurationContainer extends AbstractValidatingNamedDomain
 
     public ConfigurationInternal detachedConfiguration(Dependency... dependencies) {
         String name = DETACHED_CONFIGURATION_DEFAULT_NAME + detachedConfigurationDefaultNameCounter++;
-        DetachedConfigurationsProvider detachedConfigurationsProvider = new DetachedConfigurationsProvider();
+        DetachedConfigurationsProvider detachedConfigurationsProvider = new DetachedConfigurationsProvider(this);
         DefaultConfiguration detachedConfiguration = instantiator.newInstance(DefaultConfiguration.class,
             context, name, detachedConfigurationsProvider, resolver,
             listenerManager, dependencyMetaDataProvider, resolutionStrategyFactory, projectAccessListener, projectFinder,

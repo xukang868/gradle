@@ -16,14 +16,23 @@
 package org.gradle.api.internal.artifacts.configurations;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 
 import java.util.Set;
 
 class DetachedConfigurationsProvider implements ConfigurationsProvider {
+    private final DefaultConfigurationContainer createdFrom;
     private ConfigurationInternal theOnlyConfiguration;
 
+    public DetachedConfigurationsProvider(DefaultConfigurationContainer configurationContainer) {
+        createdFrom = configurationContainer;
+    }
+
     public Set<ConfigurationInternal> getAll() {
-        return ImmutableSet.of(theOnlyConfiguration);
+        if (createdFrom == null) {
+            return ImmutableSet.of(theOnlyConfiguration);
+        }
+        return Sets.union(createdFrom.getAll(), ImmutableSet.of(theOnlyConfiguration));
     }
 
     public void setTheOnlyConfiguration(ConfigurationInternal theOnlyConfiguration) {

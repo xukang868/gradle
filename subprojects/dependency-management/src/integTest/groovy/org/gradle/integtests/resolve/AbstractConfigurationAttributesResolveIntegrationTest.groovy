@@ -51,13 +51,22 @@ abstract class AbstractConfigurationAttributesResolveIntegrationTest extends Abs
 
             project(':a') {
                 configurations {
-                    _compileFreeDebug.attributes { $freeDebug }
-                    _compileFreeRelease.attributes { $freeRelease }
+                    deps
                 }
                 dependencies {
-                    _compileFreeDebug project(':b')
-                    _compileFreeRelease project(':b')
+                    deps project(':b')
                 }
+                configurations {
+                    _compileFreeDebug {
+                        extendsFrom configurations.deps
+                        attributes { $freeDebug }
+                    }
+                    _compileFreeRelease {
+                        extendsFrom configurations.deps
+                        attributes { $freeRelease }
+                    }
+                }
+                
                 task checkDebug(dependsOn: configurations._compileFreeDebug) {
                     doLast {
                        assert configurations._compileFreeDebug.collect { it.name } == ['b-foo.jar']
@@ -66,6 +75,76 @@ abstract class AbstractConfigurationAttributesResolveIntegrationTest extends Abs
                 task checkRelease(dependsOn: configurations._compileFreeRelease) {
                     doLast {
                        assert configurations._compileFreeRelease.collect { it.name } == ['b-bar.jar']
+                    }
+                }
+            }
+            project(':b') {
+                configurations {
+                    foo {
+                        attributes { $freeDebug }
+                    }
+                    bar {
+                        attributes { $freeRelease }
+                    }
+                }
+                task fooJar(type: Jar) {
+                   baseName = 'b-foo'
+                }
+                task barJar(type: Jar) {
+                   baseName = 'b-bar'
+                }
+                artifacts {
+                    foo fooJar
+                    bar barJar
+                }
+            }
+
+        """
+
+        when:
+        run ':a:checkDebug'
+
+        then:
+        result.assertTasksExecuted(':b:fooJar', ':a:checkDebug')
+
+        when:
+        run ':a:checkRelease'
+
+        then:
+        result.assertTasksExecuted(':b:barJar', ':a:checkRelease')
+    }
+
+    def "selects configuration in target project which matches the configuration attributes using detached configurations"() {
+        given:
+        file('settings.gradle') << "include 'a', 'b'"
+        buildFile << """
+            $typeDefs
+
+            project(':a') {
+                configurations {
+                    deps
+                }
+                dependencies {
+                    deps project(':b')
+                }
+                def _compileFreeDebug = configurations.detachedConfiguration()
+                def _compileFreeRelease = configurations.detachedConfiguration()
+                _compileFreeDebug.with {
+                    extendsFrom configurations.deps
+                    attributes { $freeDebug }
+                }
+                _compileFreeRelease.with {
+                    extendsFrom configurations.deps
+                    attributes { $freeRelease }
+                }
+                task checkDebug(dependsOn: _compileFreeDebug) {
+                    doLast {
+                       assert _compileFreeDebug.collect { it.name } == ['b-foo.jar']
+                    }
+                }
+                task checkRelease(dependsOn: _compileFreeRelease) {
+                    doLast {
+                       assert _compileFreeRelease.collect { it.name } == ['b-bar.jar']
                     }
                 }
             }
