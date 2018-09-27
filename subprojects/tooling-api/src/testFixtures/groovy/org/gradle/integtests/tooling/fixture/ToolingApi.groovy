@@ -171,7 +171,6 @@ class ToolingApi implements TestRule {
             connector.useInstallation(dist.gradleHomeDir.absoluteFile)
         }
         connector.embedded(embedded)
-        connector.searchUpwards(false)
         if (useSeparateDaemonBaseDir) {
             connector.daemonBaseDir(new File(daemonBaseDir.path))
         }

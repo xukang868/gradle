@@ -76,7 +76,6 @@ class CustomPlugin implements Plugin<Project> {
 
         when:
         withConnector { connector ->
-            connector.searchUpwards(true)
             connector.forProjectDirectory(file("b"))
         }
         result = withConnection { connection -> connection.action(new UseGradleBuildToFetchProjectModel()).run() }

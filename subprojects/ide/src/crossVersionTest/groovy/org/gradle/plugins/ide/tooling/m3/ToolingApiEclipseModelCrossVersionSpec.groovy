@@ -312,7 +312,6 @@ project(':c') {
 
         when:
         toolingApi.withConnector { connector ->
-            connector.searchUpwards(true)
             connector.forProjectDirectory(projectDir.file('child1'))
         }
         EclipseProject child = loadToolingModel(EclipseProject)

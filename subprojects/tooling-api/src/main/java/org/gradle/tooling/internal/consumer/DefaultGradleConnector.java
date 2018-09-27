@@ -97,11 +97,6 @@ public class DefaultGradleConnector extends GradleConnector {
         return this;
     }
 
-    public GradleConnector searchUpwards(boolean searchUpwards) {
-        connectionParamsBuilder.setSearchUpwards(searchUpwards);
-        return this;
-    }
-
     public GradleConnector embedded(boolean embedded) {
         connectionParamsBuilder.setEmbedded(embedded);
         return this;
@@ -134,7 +129,7 @@ public class DefaultGradleConnector extends GradleConnector {
             throw new IllegalStateException("A project directory must be specified before creating a connection.");
         }
         if (distribution == null) {
-            distribution = distributionFactory.getDefaultDistribution(connectionParameters.getProjectDir(), connectionParameters.isSearchUpwards() != null ? connectionParameters.isSearchUpwards() : true);
+            distribution = distributionFactory.getDefaultDistribution(connectionParameters.getProjectDir());
         }
         return connectionFactory.create(distribution, connectionParameters);
     }

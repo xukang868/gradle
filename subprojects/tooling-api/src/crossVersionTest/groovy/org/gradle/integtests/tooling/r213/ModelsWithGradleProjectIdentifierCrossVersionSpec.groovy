@@ -24,7 +24,6 @@ import org.gradle.integtests.tooling.fixture.ToolingApiSpecification
 import org.gradle.integtests.tooling.fixture.ToolingApiVersion
 import org.gradle.test.fixtures.file.TestFile
 import org.gradle.tooling.GradleConnector
-import org.gradle.tooling.internal.consumer.DefaultGradleConnector
 import org.gradle.tooling.model.GradleProject
 import org.gradle.tooling.model.ProjectIdentifier
 import org.gradle.tooling.model.gradle.BuildInvocations
@@ -80,18 +79,16 @@ class ModelsWithGradleProjectIdentifierCrossVersionSpec extends ToolingApiSpecif
         assert gradleProjectIdentifiers*.buildIdentifier*.rootDir == modelIdentifiers*.buildIdentifier*.rootDir
     }
 
-    private getModelWithProjectConnection(TestFile rootDir, Class modelType = GradleProject, boolean searchUpwards = true) {
+    private getModelWithProjectConnection(TestFile rootDir, Class modelType = GradleProject) {
         GradleConnector connector = connector()
         connector.forProjectDirectory(rootDir)
-        ((DefaultGradleConnector) connector).searchUpwards(searchUpwards)
         return withConnection(connector) { it.getModel(modelType) }
     }
 
-    private getModelsWithProjectConnection(TestFile rootDir, Class modelType = GradleProject, boolean searchUpwards = true) {
+    private getModelsWithProjectConnection(TestFile rootDir, Class modelType = GradleProject) {
         FetchProjectModelsBuildAction buildAction = new FetchProjectModelsBuildAction(modelType)
         GradleConnector connector = connector()
         connector.forProjectDirectory(rootDir)
-        ((DefaultGradleConnector) connector).searchUpwards(searchUpwards)
         withConnection(connector) { connection ->
             connection.action(buildAction).run()
         }

@@ -91,7 +91,7 @@ class DisabledTaskExecutionOnIncludedBuildsCrossVersionSpec extends ToolingApiSp
         singleProjectBuildInSubfolder("includedBuild")
 
         when:
-        withConnection(toolingApi.connector().forProjectDirectory(projectDir.file('sub1')).searchUpwards(true)) {
+        withConnection(toolingApi.connector().forProjectDirectory(projectDir.file('sub1'))) {
             BuildInvocations invocations = getModel(BuildInvocations)
             def task = invocations.tasks.find { it.name.contains 'tasks' }
             def selector = invocations.taskSelectors.find { it.name.contains 'tasks' }

@@ -23,7 +23,6 @@ import org.gradle.integtests.tooling.fixture.ToolingApiSpecification
 import org.gradle.integtests.tooling.fixture.ToolingApiVersion
 import org.gradle.test.fixtures.file.TestFile
 import org.gradle.tooling.GradleConnector
-import org.gradle.tooling.internal.consumer.DefaultGradleConnector
 import org.gradle.tooling.model.GradleProject
 import org.gradle.tooling.model.HasGradleProject
 import org.gradle.tooling.model.eclipse.EclipseProject
@@ -134,18 +133,6 @@ class ModelsWithGradleProjectCrossVersionSpec extends ToolingApiSpecification {
         assertProject(projectFromEclipseProject, rootMulti, ':x', 'x', ':', [])
     }
 
-    def "ProjectConnection provides GradleProject for subproject of multi-project build with --no-search-upward"() {
-        when:
-        def rootDir = rootMulti.file("x")
-        GradleProject project = getGradleProjectWithProjectConnection(rootDir, modelType, false)
-
-        then:
-        assertProject(project, rootDir, ':', 'x', null, [])
-
-        where:
-        modelType << projectScopedModels
-    }
-
     private static void hasProject(def projects, File rootDir, String path, String name) {
         hasProject(projects, rootDir, path, name, null, [])
     }
@@ -178,10 +165,9 @@ class ModelsWithGradleProjectCrossVersionSpec extends ToolingApiSpecification {
         assert project.projectIdentifier.buildIdentifier.rootDir == rootDir
     }
 
-    private GradleProject getGradleProjectWithProjectConnection(TestFile rootDir, Class modelType = GradleProject, boolean searchUpwards = true) {
+    private GradleProject getGradleProjectWithProjectConnection(TestFile rootDir, Class modelType = GradleProject) {
         GradleConnector connector = connector()
         connector.forProjectDirectory(rootDir.absoluteFile)
-        ((DefaultGradleConnector) connector).searchUpwards(searchUpwards)
         def model = withConnection(connector) { it.getModel(modelType) }
         return toGradleProject(model)
     }
@@ -202,10 +188,9 @@ class ModelsWithGradleProjectCrossVersionSpec extends ToolingApiSpecification {
         throw new IllegalArgumentException("Model type does not provide GradleProject")
     }
 
-    private getGradleProjectsWithProjectConnectionUsingBuildModel(TestFile rootDir, Class modelType = GradleProject, boolean searchUpwards = true) {
+    private getGradleProjectsWithProjectConnectionUsingBuildModel(TestFile rootDir, Class modelType = GradleProject) {
         GradleConnector connector = connector()
         connector.forProjectDirectory(rootDir.absoluteFile)
-        ((DefaultGradleConnector) connector).searchUpwards(searchUpwards)
         def buildModel = withConnection(connector) { it.getModel(modelType) }
         return toGradleProjects(buildModel)
     }

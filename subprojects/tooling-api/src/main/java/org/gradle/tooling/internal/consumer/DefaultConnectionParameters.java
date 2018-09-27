@@ -23,7 +23,6 @@ import java.util.concurrent.TimeUnit;
 public class DefaultConnectionParameters implements ConnectionParameters {
 
     private final File projectDir;
-    private final Boolean searchUpwards;
     private final File gradleUserHomeDir;
     private final Boolean embedded;
     private final Integer daemonMaxIdleTimeValue;
@@ -43,7 +42,6 @@ public class DefaultConnectionParameters implements ConnectionParameters {
         private TimeUnit daemonMaxIdleTimeUnits;
         private boolean verboseLogging;
         private File daemonBaseDir;
-        private Boolean searchUpwards;
 
         protected Builder() {
         }
@@ -78,24 +76,19 @@ public class DefaultConnectionParameters implements ConnectionParameters {
             return this;
         }
 
-        public Builder setSearchUpwards(Boolean searchUpwards) {
-            this.searchUpwards = searchUpwards;
-            return this;
-        }
-
         public Builder setDaemonBaseDir(File daemonBaseDir) {
             this.daemonBaseDir = daemonBaseDir;
             return this;
         }
 
         public DefaultConnectionParameters build() {
-            return new DefaultConnectionParameters(projectDir, gradleUserHomeDir, embedded, daemonMaxIdleTimeValue, daemonMaxIdleTimeUnits, daemonBaseDir, verboseLogging, searchUpwards);
+            return new DefaultConnectionParameters(projectDir, gradleUserHomeDir, embedded, daemonMaxIdleTimeValue, daemonMaxIdleTimeUnits, daemonBaseDir, verboseLogging);
         }
     }
 
     private DefaultConnectionParameters(File projectDir, File gradleUserHomeDir, Boolean embedded,
                                         Integer daemonMaxIdleTimeValue, TimeUnit daemonMaxIdleTimeUnits, File daemonBaseDir,
-                                        boolean verboseLogging, Boolean searchUpwards) {
+                                        boolean verboseLogging) {
         this.projectDir = projectDir;
         this.gradleUserHomeDir = gradleUserHomeDir;
         this.embedded = embedded;
@@ -103,7 +96,6 @@ public class DefaultConnectionParameters implements ConnectionParameters {
         this.daemonMaxIdleTimeUnits = daemonMaxIdleTimeUnits;
         this.daemonBaseDir = daemonBaseDir;
         this.verboseLogging = verboseLogging;
-        this.searchUpwards = searchUpwards;
     }
 
     @Override
@@ -137,10 +129,5 @@ public class DefaultConnectionParameters implements ConnectionParameters {
 
     public boolean getVerboseLogging() {
         return verboseLogging;
-    }
-
-    @Override
-    public Boolean isSearchUpwards() {
-        return searchUpwards;
     }
 }

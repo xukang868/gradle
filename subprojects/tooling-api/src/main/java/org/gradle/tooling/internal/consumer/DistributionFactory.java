@@ -57,8 +57,8 @@ public class DistributionFactory {
     /**
      * Returns the default distribution to use for the specified project.
      */
-    public Distribution getDefaultDistribution(File projectDir, boolean searchUpwards) {
-        BuildLayout layout = new BuildLayoutFactory().getLayoutFor(projectDir, searchUpwards);
+    public Distribution getDefaultDistribution(File projectDir) {
+        BuildLayout layout = new BuildLayoutFactory().getLayoutFor(projectDir, true);
         WrapperExecutor wrapper = WrapperExecutor.forProjectDirectory(layout.getRootDirectory());
         if (wrapper.getDistribution() != null) {
             return new ZippedDistribution(wrapper.getConfiguration(), distributionBaseDir, clock);

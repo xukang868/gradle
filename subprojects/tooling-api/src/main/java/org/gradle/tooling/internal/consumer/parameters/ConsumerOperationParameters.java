@@ -326,7 +326,7 @@ public class ConsumerOperationParameters implements BuildOperationParametersVers
      * @since 1.0-milestone-3
      */
     public Boolean isSearchUpwards() {
-        return parameters.isSearchUpwards();
+        return null;
     }
 
     /**

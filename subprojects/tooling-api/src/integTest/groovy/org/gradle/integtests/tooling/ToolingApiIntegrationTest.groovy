@@ -99,7 +99,6 @@ allprojects {
         when:
         toolingApi.withConnector { connector ->
             connector.useBuildDistribution()
-            connector.searchUpwards(true)
             connector.forProjectDirectory(projectDir.file('child'))
         }
         toolingApi.withConnection { connection -> connection.newBuild().forTasks('check').run() }
@@ -154,6 +153,7 @@ allprojects {
     def "tooling API does not hold JVM open"() {
         given:
         def buildFile = projectDir.file("build.gradle")
+        def settingsFile = projectDir.file("settings.gradle")
         def startTimeoutMs = 90000
         def stateChangeTimeoutMs = 15000
         def stopTimeoutMs = 10000
@@ -162,6 +162,7 @@ allprojects {
         def gradleUserHomeDirPath = executer.gradleUserHomeDir.absolutePath
         def gradleHomeDirPath = distribution.gradleHomeDir.absolutePath
 
+        settingsFile << "rootProject.name = 'test'"
         buildFile << """
             apply plugin: 'java'
             apply plugin: 'application'
@@ -231,9 +232,6 @@ allprojects {
                     if (args.length > 0) {
                         connector.useInstallation(new File(args[0]));
                     }
-
-                    // required because invoked build script doesn't provide a settings file
-                    ((DefaultGradleConnector) connector).searchUpwards(false);
 
                     ProjectConnection connection = connector.connect();
                     try {
