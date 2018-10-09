@@ -83,6 +83,7 @@ class AbstractIntegrationSpec extends Specification {
 
     def cleanup() {
         executer.cleanup()
+        m2.assertNotLeakingDependenciesInLocalRepo()
     }
 
     GradleContextualExecuter createExecuter() {

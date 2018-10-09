@@ -116,6 +116,15 @@ class M2Installation implements Action<GradleExecuter> {
         }
     }
 
+    void assertNotLeakingDependenciesInLocalRepo() {
+        if (isolateMavenLocal) {
+            def repoFiles = isolatedMavenRepoForLeakageChecks.listFiles()
+            if (repoFiles.length > 0) {
+                throw new IllegalStateException("Test is leaking Maven dependencies. Fix the test or make explicit use of M2Installation.")
+            }
+        }
+    }
+
     private static void setMavenLocalLocation(GradleExecuter gradleExecuter, File destination) {
         gradleExecuter.withArgument("-Dmaven.repo.local=${destination?:''}" )
     }
