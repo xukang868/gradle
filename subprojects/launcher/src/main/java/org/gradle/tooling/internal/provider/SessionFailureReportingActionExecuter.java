@@ -18,17 +18,18 @@ package org.gradle.tooling.internal.provider;
 
 import org.gradle.BuildResult;
 import org.gradle.api.internal.ExceptionAnalyser;
-import org.gradle.api.logging.Logging;
 import org.gradle.api.logging.configuration.ShowStacktrace;
 import org.gradle.initialization.BuildRequestContext;
 import org.gradle.initialization.DefaultExceptionAnalyser;
 import org.gradle.initialization.MultipleBuildFailuresExceptionAnalyser;
 import org.gradle.initialization.ReportedException;
 import org.gradle.initialization.StackTraceSanitizingExceptionAnalyser;
+import org.gradle.internal.buildevents.BuildExceptionReporter;
+import org.gradle.internal.buildevents.BuildResultLogger;
 import org.gradle.internal.buildevents.BuildStartedTime;
-import org.gradle.internal.buildevents.BuildLogger;
 import org.gradle.internal.event.DefaultListenerManager;
 import org.gradle.internal.invocation.BuildAction;
+import org.gradle.internal.logging.format.TersePrettyDurationFormatter;
 import org.gradle.internal.logging.text.StyledTextOutputFactory;
 import org.gradle.internal.service.ServiceRegistry;
 import org.gradle.internal.time.Clock;
@@ -74,8 +75,9 @@ public class SessionFailureReportingActionExecuter implements BuildExecuter {
                 LOGGER.error("Failed to analyze exception", innerFailure);
             }
             BuildStartedTime buildStartedTime = BuildStartedTime.startingAt(requestContext.getStartTime());
-            BuildLogger buildLogger = new BuildLogger(Logging.getLogger(ServicesSetupBuildActionExecuter.class), styledTextOutputFactory, action.getStartParameter(), requestContext, buildStartedTime, clock);
-            buildLogger.buildFinished(new BuildResult(null, failure));
+            BuildResult result = new BuildResult(null, failure);
+            new BuildExceptionReporter(styledTextOutputFactory, action.getStartParameter(), requestContext.getClient()).buildFinished(result);
+            new BuildResultLogger(styledTextOutputFactory, buildStartedTime, clock, new TersePrettyDurationFormatter()).buildFinished(result);
             throw new ReportedException(failure);
         }
     }

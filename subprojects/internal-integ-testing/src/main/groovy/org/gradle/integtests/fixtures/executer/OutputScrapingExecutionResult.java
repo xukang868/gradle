@@ -89,6 +89,9 @@ public class OutputScrapingExecutionResult implements ExecutionResult {
             this.postBuild = LogContent.empty();
         } else {
             this.mainContent = match.getLeft();
+            if (match.getRight().drop(1).splitOnFirstMatchingLine(BUILD_RESULT_PATTERN) != null || error.splitOnFirstMatchingLine(BUILD_RESULT_PATTERN) != null) {
+                throw new AssertionError(String.format("Found multiple build results in output.%nOutput:%n=======%n%s%nError:%n======%n%s", getOutput(), getError()));
+            }
             this.postBuild = match.getRight().drop(1);
         }
         this.errorContent = error.removeAnsiChars();

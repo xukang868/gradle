@@ -17,6 +17,7 @@
 package org.gradle.api
 
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
+import org.gradle.internal.build.events.RootBuildCompletionListener
 import spock.lang.Unroll
 
 class BuildEventsErrorIntegrationTest extends AbstractIntegrationSpec {
@@ -108,7 +109,7 @@ gradle.rootProject { task a }
         then:
         failure.assertHasDescription("broken")
                 .assertHasNoCause()
-        // TODO - include location information for buildFinished failure and get rid of the misleading 'build successful'
+        // TODO - include location information for buildFinished failure
         if (hasLocation) {
             failure.assertHasFileName("Settings file '$settingsFile'")
                     .assertHasLineNumber(3)
@@ -137,7 +138,7 @@ gradle.rootProject { task a }
         then:
         failure.assertHasDescription("broken")
                 .assertHasNoCause()
-        // TODO - include location information for buildFinished failure and get rid of the misleading 'build successful'
+        // TODO - include location information for buildFinished failure
         if (hasLocation) {
             failure.assertHasFileName("Settings file '$settingsFile'")
                     .assertHasLineNumber(3)
@@ -170,7 +171,7 @@ gradle.rootProject { task a }
         then:
         failure.assertHasDescription("broken")
                 .assertHasNoCause()
-        // TODO - include location information for buildFinished failure and get rid of the misleading 'build successful'
+        // TODO - include location information for buildFinished failure
         if (hasLocation) {
             failure.assertHasFileName("Settings file '$settingsFile'")
                     .assertHasLineNumber(5)
@@ -182,5 +183,46 @@ gradle.rootProject { task a }
         "projectsLoaded"    | "Gradle gradle"      | true
         "projectsEvaluated" | "Gradle gradle"      | true
         "buildFinished"     | "BuildResult result" | false
+    }
+
+    def "fires internal event on completion of buildFinished events"() {
+        buildFile << """
+            import ${RootBuildCompletionListener.name}
+            def listener = {
+                println "post build"
+            } as RootBuildCompletionListener
+            gradle.addListener(listener)
+            gradle.buildFinished {
+                println "build finished"
+            }
+        """
+
+        expect:
+        succeeds()
+
+        and:
+        outputContains("build finished")
+        result.assertHasPostBuildOutput("post build")
+    }
+
+    def "fires internal event on completion after failed buildFinished events"() {
+        buildFile << """
+            import ${RootBuildCompletionListener.name}
+            def listener = {
+                println "post build"
+            } as RootBuildCompletionListener
+            gradle.addListener(listener)
+            gradle.buildFinished {
+                println "breaking"
+                throw new RuntimeException("broken")
+            }
+        """
+
+        expect:
+        fails()
+
+        and:
+        failure.assertHasDescription("broken")
+        result.output.indexOf("post build") > result.output.indexOf("breaking")
     }
 }

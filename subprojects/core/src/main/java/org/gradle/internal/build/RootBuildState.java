@@ -30,7 +30,7 @@ public interface RootBuildState extends BuildState {
     StartParameter getStartParameter();
 
     /**
-     * Runs a single invocation of this build, executing the given action and returning the result. Should be called once only for a given build instance.
+     * Runs a single invocation of this build, executing the given action and returning the result. Should be called once only for a given {@link RootBuildState} instance.
      */
     <T> T run(Transformer<T, ? super BuildController> buildAction);
 }

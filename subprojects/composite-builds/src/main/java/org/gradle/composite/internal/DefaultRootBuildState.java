@@ -16,26 +16,38 @@
 
 package org.gradle.composite.internal;
 
+import org.gradle.BuildResult;
 import org.gradle.StartParameter;
 import org.gradle.api.Transformer;
 import org.gradle.api.artifacts.component.BuildIdentifier;
 import org.gradle.api.internal.BuildDefinition;
 import org.gradle.api.internal.SettingsInternal;
 import org.gradle.api.internal.artifacts.DefaultBuildIdentifier;
+import org.gradle.initialization.BuildClientMetaData;
 import org.gradle.initialization.BuildRequestContext;
 import org.gradle.initialization.GradleLauncher;
 import org.gradle.initialization.GradleLauncherFactory;
 import org.gradle.initialization.IncludedBuildSpec;
 import org.gradle.initialization.NestedBuildFactory;
+import org.gradle.initialization.ReportedException;
 import org.gradle.initialization.RootBuildLifecycleListener;
 import org.gradle.internal.build.AbstractBuildState;
 import org.gradle.internal.build.RootBuildState;
+import org.gradle.internal.build.events.RootBuildCompletionListener;
+import org.gradle.internal.buildevents.BuildExceptionReporter;
+import org.gradle.internal.buildevents.BuildResultLogger;
+import org.gradle.internal.buildevents.BuildStartedTime;
 import org.gradle.internal.concurrent.Stoppable;
 import org.gradle.internal.event.ListenerManager;
 import org.gradle.internal.invocation.BuildController;
 import org.gradle.internal.invocation.GradleBuildController;
+import org.gradle.internal.logging.format.TersePrettyDurationFormatter;
+import org.gradle.internal.logging.text.StyledTextOutputFactory;
 import org.gradle.internal.service.ServiceRegistry;
+import org.gradle.internal.time.Clock;
 import org.gradle.util.Path;
+
+import javax.annotation.Nullable;
 
 class DefaultRootBuildState extends AbstractBuildState implements RootBuildState, Stoppable {
     private final ListenerManager listenerManager;
@@ -76,9 +88,50 @@ class DefaultRootBuildState extends AbstractBuildState implements RootBuildState
         RootBuildLifecycleListener buildLifecycleListener = listenerManager.getBroadcaster(RootBuildLifecycleListener.class);
         buildLifecycleListener.afterStart();
         try {
-            return buildAction.transform(buildController);
+            RootBuildCompletionListener completionListener = gradleLauncher.getGradle().getServices().get(ListenerManager.class).getBroadcaster(RootBuildCompletionListener.class);
+            try {
+                Exception failure = null;
+                T result = null;
+                try {
+                    result = buildAction.transform(buildController);
+                } catch (Exception e) {
+                    failure = e;
+                }
+                ReportedException reportedException = logCompletion(failure);
+                if (reportedException != null) {
+                    throw reportedException;
+                }
+                return result;
+            } finally {
+                completionListener.rootBuildComplete();
+            }
         } finally {
             buildLifecycleListener.beforeComplete();
+        }
+    }
+
+    @Nullable
+    private ReportedException logCompletion(@Nullable Exception failure) {
+        Throwable reportable = failure;
+        // TODO - move construction of ReportedException here and simplify this method
+        if (failure instanceof ReportedException) {
+            reportable = failure.getCause();
+        }
+        ServiceRegistry services = gradleLauncher.getGradle().getServices();
+        StyledTextOutputFactory textOutputFactory = services.get(StyledTextOutputFactory.class);
+        StartParameter startParameter = gradleLauncher.getGradle().getStartParameter();
+        BuildClientMetaData clientMetaData = services.get(BuildClientMetaData.class);
+        BuildStartedTime buildStartedTime = services.get(BuildStartedTime.class);
+        Clock clock = services.get(Clock.class);
+        BuildResult result = new BuildResult(gradleLauncher.getGradle(), reportable);
+        new BuildExceptionReporter(textOutputFactory, startParameter, clientMetaData).buildFinished(result);
+        new BuildResultLogger(textOutputFactory, buildStartedTime, clock, new TersePrettyDurationFormatter()).buildFinished(result);
+        if (failure == null) {
+            return null;
+        } else if (failure instanceof ReportedException) {
+            return (ReportedException) failure;
+        } else {
+            return new ReportedException(failure);
         }
     }
 

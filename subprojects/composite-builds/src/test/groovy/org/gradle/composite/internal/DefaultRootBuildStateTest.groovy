@@ -16,6 +16,7 @@
 
 package org.gradle.composite.internal
 
+import org.gradle.StartParameter
 import org.gradle.api.Transformer
 import org.gradle.api.internal.BuildDefinition
 import org.gradle.api.internal.GradleInternal
@@ -24,11 +25,16 @@ import org.gradle.api.internal.project.ProjectStateRegistry
 import org.gradle.initialization.BuildRequestContext
 import org.gradle.initialization.GradleLauncher
 import org.gradle.initialization.GradleLauncherFactory
+import org.gradle.initialization.ReportedException
 import org.gradle.initialization.RootBuildLifecycleListener
+import org.gradle.internal.build.events.RootBuildCompletionListener
+import org.gradle.internal.buildevents.BuildStartedTime
 import org.gradle.internal.event.ListenerManager
 import org.gradle.internal.invocation.BuildController
+import org.gradle.internal.logging.text.StyledTextOutputFactory
 import org.gradle.internal.operations.BuildOperationExecutor
 import org.gradle.internal.service.ServiceRegistry
+import org.gradle.internal.time.Clock
 import org.gradle.internal.work.WorkerLeaseService
 import org.gradle.test.fixtures.work.TestWorkerLeaseService
 import spock.lang.Specification
@@ -40,6 +46,7 @@ class DefaultRootBuildStateTest extends Specification {
     def gradle = Mock(GradleInternal)
     def listenerManager = Mock(ListenerManager)
     def lifecycleListener = Mock(RootBuildLifecycleListener)
+    def completionListener = Mock(RootBuildCompletionListener)
     def action = Mock(Transformer)
     def sessionServices = Mock(ServiceRegistry)
     def buildDefinition = Mock(BuildDefinition)
@@ -49,11 +56,17 @@ class DefaultRootBuildStateTest extends Specification {
     def setup() {
         _ * factory.newInstance(buildDefinition, _, buildRequestContext, sessionServices) >> launcher
         _ * listenerManager.getBroadcaster(RootBuildLifecycleListener) >> lifecycleListener
+        _ * listenerManager.getBroadcaster(RootBuildCompletionListener) >> completionListener
         _ * sessionServices.get(ProjectStateRegistry) >> projectStateRegistry
         _ * sessionServices.get(BuildOperationExecutor) >> Stub(BuildOperationExecutor)
         _ * sessionServices.get(WorkerLeaseService) >> new TestWorkerLeaseService()
+        _ * sessionServices.get(ListenerManager) >> listenerManager
+        _ * sessionServices.get(StyledTextOutputFactory) >> Stub(StyledTextOutputFactory)
+        _ * sessionServices.get(BuildStartedTime) >> BuildStartedTime.startingAt(123)
+        _ * sessionServices.get(Clock) >> Stub(Clock)
         _ * launcher.gradle >> gradle
         _ * gradle.services >> sessionServices
+        _ * gradle.startParameter >> Stub(StartParameter)
         _ * projectStateRegistry.withLenientState(_) >> { args -> return args[0].create() }
 
         build = new DefaultRootBuildState(buildDefinition, buildRequestContext, factory, listenerManager, sessionServices)
@@ -79,13 +92,16 @@ class DefaultRootBuildStateTest extends Specification {
         then:
         result == '<result>'
 
-        then:
+//        then:
         1 * lifecycleListener.afterStart()
 
         then:
         1 * action.transform(!null) >> { BuildController controller ->
             '<result>'
         }
+
+        then:
+        1 * completionListener.rootBuildComplete()
 
         then:
         1 * lifecycleListener.beforeComplete()
@@ -145,8 +161,8 @@ class DefaultRootBuildStateTest extends Specification {
         build.run(action)
 
         then:
-        IllegalStateException e = thrown()
-        e.message == 'Cannot use launcher after build has completed.'
+        ReportedException e = thrown()
+        e.cause.message == 'Cannot use launcher after build has completed.'
 
         and:
         1 * launcher.executeTasks() >> gradle
@@ -159,11 +175,16 @@ class DefaultRootBuildStateTest extends Specification {
         build.run(action)
 
         then:
-        RuntimeException e = thrown()
-        e == failure
+        ReportedException e = thrown()
+        e.cause == failure
 
         and:
         1 * action.transform(!null) >> { BuildController controller -> throw failure }
+
+        then:
+        1 * completionListener.rootBuildComplete()
+
+        then:
         1 * lifecycleListener.beforeComplete()
     }
 
@@ -174,14 +195,15 @@ class DefaultRootBuildStateTest extends Specification {
         build.run(action)
 
         then:
-        RuntimeException e = thrown()
-        e == failure
+        ReportedException e = thrown()
+        e.cause == failure
 
         and:
         1 * launcher.executeTasks() >> { throw failure }
         1 * action.transform(!null) >> { BuildController controller ->
             controller.run()
         }
+        1 * completionListener.rootBuildComplete()
         1 * lifecycleListener.beforeComplete()
     }
 
@@ -192,14 +214,15 @@ class DefaultRootBuildStateTest extends Specification {
         build.run(action)
 
         then:
-        RuntimeException e = thrown()
-        e == failure
+        ReportedException e = thrown()
+        e.cause == failure
 
         and:
         1 * launcher.getConfiguredBuild() >> { throw failure }
         1 * action.transform(!null) >> { BuildController controller ->
             controller.configure()
         }
+        1 * completionListener.rootBuildComplete()
         1 * lifecycleListener.beforeComplete()
     }
 
@@ -208,8 +231,8 @@ class DefaultRootBuildStateTest extends Specification {
         build.run(action)
 
         then:
-        IllegalStateException e = thrown()
-        e.message == 'Cannot use launcher after build has completed.'
+        ReportedException e = thrown()
+        e.cause.message == 'Cannot use launcher after build has completed.'
 
         and:
         1 * launcher.configuredBuild >> { throw new RuntimeException() }

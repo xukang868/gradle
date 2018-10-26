@@ -20,7 +20,6 @@ import junit.framework.AssertionFailedError;
 import org.apache.commons.io.output.TeeOutputStream;
 import org.gradle.BuildResult;
 import org.gradle.StartParameter;
-import org.gradle.api.GradleException;
 import org.gradle.api.Task;
 import org.gradle.api.execution.TaskExecutionGraph;
 import org.gradle.api.execution.TaskExecutionGraphListener;
@@ -141,14 +140,12 @@ public class InProcessGradleExecuter extends DaemonGradleExecuter {
         ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
         BuildListenerImpl buildListener = new BuildListenerImpl();
         BuildResult result = doRun(outputStream, errorStream, buildListener);
-        try {
-            result.rethrowFailure();
-        } catch (Exception e) {
-            throw new UnexpectedBuildFailure(e);
+        if (result.getFailure() != null) {
+            throw new UnexpectedBuildFailure(result.getFailure());
         }
 
         return assertResult(new InProcessExecutionResult(buildListener.executedTasks, buildListener.skippedTasks,
-            OutputScrapingExecutionResult.from(outputStream.toString(), errorStream.toString())));
+                OutputScrapingExecutionResult.from(outputStream.toString(), errorStream.toString())));
     }
 
     @Override
@@ -160,13 +157,13 @@ public class InProcessGradleExecuter extends DaemonGradleExecuter {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
         BuildListenerImpl buildListener = new BuildListenerImpl();
-        try {
-            doRun(outputStream, errorStream, buildListener).rethrowFailure();
+
+        BuildResult buildResult = doRun(outputStream, errorStream, buildListener);
+        if (buildResult.getFailure() == null) {
             throw new AssertionError("expected build to fail but it did not.");
-        } catch (GradleException e) {
-            return assertResult(new InProcessExecutionFailure(buildListener.executedTasks, buildListener.skippedTasks,
-                OutputScrapingExecutionFailure.from(outputStream.toString(), errorStream.toString()), e));
         }
+        return assertResult(new InProcessExecutionFailure(buildListener.executedTasks, buildListener.skippedTasks,
+                OutputScrapingExecutionFailure.from(outputStream.toString(), errorStream.toString()), buildResult.getFailure()));
     }
 
     private boolean isForkRequired() {
@@ -336,21 +333,21 @@ public class InProcessGradleExecuter extends DaemonGradleExecuter {
 
     private BuildActionParameters createBuildActionParameters(StartParameter startParameter) {
         return new DefaultBuildActionParameters(
-            System.getProperties(),
-            System.getenv(),
-            SystemProperties.getInstance().getCurrentDir(),
-            startParameter.getLogLevel(),
-            false,
-            startParameter.isContinuous(),
-            ClassPath.EMPTY
+                System.getProperties(),
+                System.getenv(),
+                SystemProperties.getInstance().getCurrentDir(),
+                startParameter.getLogLevel(),
+                false,
+                startParameter.isContinuous(),
+                ClassPath.EMPTY
         );
     }
 
     private BuildRequestContext createBuildRequestContext() {
         return new DefaultBuildRequestContext(
-            new DefaultBuildRequestMetaData(new GradleLauncherMetaData(), Time.currentTimeMillis(), interactive),
-            new DefaultBuildCancellationToken(),
-            new NoOpBuildEventConsumer());
+                new DefaultBuildRequestMetaData(new GradleLauncherMetaData(), Time.currentTimeMillis(), interactive),
+                new DefaultBuildCancellationToken(),
+                new NoOpBuildEventConsumer());
     }
 
     public void assertCanExecute() {
@@ -600,12 +597,12 @@ public class InProcessGradleExecuter extends DaemonGradleExecuter {
     private static class InProcessExecutionFailure extends InProcessExecutionResult implements ExecutionFailure {
         private static final Pattern LOCATION_PATTERN = Pattern.compile("(?m)^((\\w+ )+'.+') line: (\\d+)$");
         private final OutputScrapingExecutionFailure outputFailure;
-        private final GradleException failure;
+        private final Throwable failure;
         private final String fileName;
         private final String lineNumber;
         private final List<String> descriptions = new ArrayList<String>();
 
-        public InProcessExecutionFailure(List<String> tasks, Set<String> skippedTasks, OutputScrapingExecutionFailure outputFailure, GradleException failure) {
+        public InProcessExecutionFailure(List<String> tasks, Set<String> skippedTasks, OutputScrapingExecutionFailure outputFailure, Throwable failure) {
             super(tasks, skippedTasks, outputFailure);
             this.outputFailure = outputFailure;
             this.failure = failure;
@@ -656,7 +653,7 @@ public class InProcessGradleExecuter extends DaemonGradleExecuter {
             if (count == 1) {
                 assertFalse(failure instanceof MultipleBuildFailures);
             } else {
-                assertEquals(((MultipleBuildFailures)failure).getCauses().size(), count);
+                assertEquals(((MultipleBuildFailures) failure).getCauses().size(), count);
             }
             return this;
         }
