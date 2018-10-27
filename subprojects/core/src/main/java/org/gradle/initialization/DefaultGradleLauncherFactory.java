@@ -22,7 +22,6 @@ import org.gradle.StartParameter;
 import org.gradle.api.internal.BuildDefinition;
 import org.gradle.api.internal.ExceptionAnalyser;
 import org.gradle.api.internal.GradleInternal;
-import org.gradle.api.internal.tasks.execution.statistics.TaskExecutionStatisticsEventAdapter;
 import org.gradle.api.logging.configuration.ShowStacktrace;
 import org.gradle.composite.internal.IncludedBuildControllers;
 import org.gradle.configuration.BuildConfigurer;
@@ -33,7 +32,6 @@ import org.gradle.internal.InternalBuildAdapter;
 import org.gradle.internal.build.BuildState;
 import org.gradle.internal.build.NestedBuildState;
 import org.gradle.internal.build.RootBuildState;
-import org.gradle.internal.buildevents.TaskExecutionStatisticsReporter;
 import org.gradle.internal.classpath.ClassPath;
 import org.gradle.internal.concurrent.Stoppable;
 import org.gradle.internal.event.ListenerManager;
@@ -134,9 +132,6 @@ public class DefaultGradleLauncherFactory implements GradleLauncherFactory {
 
         StartParameter startParameter = buildDefinition.getStartParameter();
         ListenerManager listenerManager = serviceRegistry.get(ListenerManager.class);
-
-        listenerManager.addListener(serviceRegistry.get(TaskExecutionStatisticsEventAdapter.class));
-        listenerManager.addListener(new TaskExecutionStatisticsReporter(serviceRegistry.get(StyledTextOutputFactory.class)));
 
         if (startParameter.isProfile()) {
             listenerManager.addListener(serviceRegistry.get(ProfileEventAdapter.class));

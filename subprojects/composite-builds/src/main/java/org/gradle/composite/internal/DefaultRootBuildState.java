@@ -23,6 +23,7 @@ import org.gradle.api.artifacts.component.BuildIdentifier;
 import org.gradle.api.internal.BuildDefinition;
 import org.gradle.api.internal.SettingsInternal;
 import org.gradle.api.internal.artifacts.DefaultBuildIdentifier;
+import org.gradle.api.internal.tasks.execution.statistics.TaskExecutionStatisticsEventAdapter;
 import org.gradle.initialization.BuildClientMetaData;
 import org.gradle.initialization.BuildRequestContext;
 import org.gradle.initialization.GradleLauncher;
@@ -37,6 +38,7 @@ import org.gradle.internal.build.events.RootBuildCompletionListener;
 import org.gradle.internal.buildevents.BuildExceptionReporter;
 import org.gradle.internal.buildevents.BuildResultLogger;
 import org.gradle.internal.buildevents.BuildStartedTime;
+import org.gradle.internal.buildevents.TaskExecutionStatisticsReporter;
 import org.gradle.internal.concurrent.Stoppable;
 import org.gradle.internal.event.ListenerManager;
 import org.gradle.internal.invocation.BuildController;
@@ -88,8 +90,12 @@ class DefaultRootBuildState extends AbstractBuildState implements RootBuildState
         RootBuildLifecycleListener buildLifecycleListener = listenerManager.getBroadcaster(RootBuildLifecycleListener.class);
         buildLifecycleListener.afterStart();
         try {
-            RootBuildCompletionListener completionListener = gradleLauncher.getGradle().getServices().get(ListenerManager.class).getBroadcaster(RootBuildCompletionListener.class);
+            ServiceRegistry services = gradleLauncher.getGradle().getServices();
+            ListenerManager buildScopedListeners = services.get(ListenerManager.class);
+            RootBuildCompletionListener completionListener = buildScopedListeners.getBroadcaster(RootBuildCompletionListener.class);
             try {
+                TaskExecutionStatisticsEventAdapter taskExecutionStats = services.get(TaskExecutionStatisticsEventAdapter.class);
+                buildScopedListeners.addListener(taskExecutionStats);
                 Exception failure = null;
                 T result = null;
                 try {
@@ -97,7 +103,7 @@ class DefaultRootBuildState extends AbstractBuildState implements RootBuildState
                 } catch (Exception e) {
                     failure = e;
                 }
-                ReportedException reportedException = logCompletion(failure);
+                ReportedException reportedException = logCompletion(failure, taskExecutionStats);
                 if (reportedException != null) {
                     throw reportedException;
                 }
@@ -111,7 +117,7 @@ class DefaultRootBuildState extends AbstractBuildState implements RootBuildState
     }
 
     @Nullable
-    private ReportedException logCompletion(@Nullable Exception failure) {
+    private ReportedException logCompletion(@Nullable Exception failure, TaskExecutionStatisticsEventAdapter taskExecutionStats) {
         Throwable reportable = failure;
         // TODO - move construction of ReportedException here and simplify this method
         if (failure instanceof ReportedException) {
@@ -126,6 +132,7 @@ class DefaultRootBuildState extends AbstractBuildState implements RootBuildState
         BuildResult result = new BuildResult(gradleLauncher.getGradle(), reportable);
         new BuildExceptionReporter(textOutputFactory, startParameter, clientMetaData).buildFinished(result);
         new BuildResultLogger(textOutputFactory, buildStartedTime, clock, new TersePrettyDurationFormatter()).buildFinished(result);
+        new TaskExecutionStatisticsReporter(textOutputFactory).buildFinished(taskExecutionStats.getTaskExecutionStatistics());
         if (failure == null) {
             return null;
         } else if (failure instanceof ReportedException) {

@@ -22,6 +22,7 @@ import org.gradle.api.internal.BuildDefinition
 import org.gradle.api.internal.GradleInternal
 import org.gradle.api.internal.artifacts.DefaultBuildIdentifier
 import org.gradle.api.internal.project.ProjectStateRegistry
+import org.gradle.api.internal.tasks.execution.statistics.TaskExecutionStatisticsEventAdapter
 import org.gradle.initialization.BuildRequestContext
 import org.gradle.initialization.GradleLauncher
 import org.gradle.initialization.GradleLauncherFactory
@@ -64,6 +65,7 @@ class DefaultRootBuildStateTest extends Specification {
         _ * sessionServices.get(StyledTextOutputFactory) >> Stub(StyledTextOutputFactory)
         _ * sessionServices.get(BuildStartedTime) >> BuildStartedTime.startingAt(123)
         _ * sessionServices.get(Clock) >> Stub(Clock)
+        _ * sessionServices.get(TaskExecutionStatisticsEventAdapter) >> Stub(TaskExecutionStatisticsEventAdapter)
         _ * launcher.gradle >> gradle
         _ * gradle.services >> sessionServices
         _ * gradle.startParameter >> Stub(StartParameter)

@@ -16,13 +16,67 @@
 
 package org.gradle.internal.logging.console.taskgrouping
 
+import org.fusesource.jansi.Ansi
 import org.gradle.api.logging.LogLevel
 import org.gradle.integtests.fixtures.console.AbstractConsoleGroupedTaskFunctionalTest
 import org.gradle.integtests.fixtures.executer.LogContent
 import spock.lang.Unroll
 
 
-abstract class AbstractFailureReportingFunctionalTest extends AbstractConsoleGroupedTaskFunctionalTest {
+abstract class AbstractBuildResultFunctionalTest extends AbstractConsoleGroupedTaskFunctionalTest {
+    protected final String buildFailed = 'BUILD FAILED'
+    protected final String buildSuccess = 'BUILD SUCCESSFUL'
+    protected final StyledOutput buildFailedStyled = styled(buildFailed, Ansi.Color.RED, Ansi.Attribute.INTENSITY_BOLD)
+    protected final StyledOutput buildSuccessStyled = styled(buildSuccess, Ansi.Color.GREEN, Ansi.Attribute.INTENSITY_BOLD)
+
+    abstract String getSuccessMessage()
+
+    abstract String getFailureMessage()
+
+    def "reports successful build with relevant styling and task execution summary"() {
+        buildFile << """
+            task nonActionable
+            task actionable1 { doLast { } }
+            task actionable2 {
+                def outputFile = file("out")
+                outputs.file outputFile
+                doLast { }
+            }
+        """
+
+        expect:
+        succeeds("nonActionable", "actionable1", "actionable2")
+
+        and:
+        result.assertRawOutputContains(successMessage)
+        LogContent.of(result.output).removeAnsiChars().withNormalizedEol().matches("""(?s).*
+BUILD SUCCESSFUL in \\d+s
+2 actionable tasks: 2 executed
+.*""")
+
+        and:
+        succeeds("nonActionable", "actionable1", "actionable2")
+
+        and:
+        LogContent.of(result.output).removeAnsiChars().withNormalizedEol().matches("""(?s).*
+BUILD SUCCESSFUL in \\d+s
+2 actionable tasks: 1 executed, 1 up-to-date
+.*""")
+    }
+
+    def "Failure status is logged even in --quiet"() {
+        given:
+        buildFile << "task fail { doFirst { assert false } }"
+
+        when:
+        executer.withConsole(consoleType)
+        executer.withQuietLogging()
+        fails('fail')
+
+        then:
+        failure.assertHasRawErrorOutput(failureMessage)
+    }
+
     @Unroll
     def "reports build failure at the end of the build with log level #level"() {
         buildFile << """
@@ -56,6 +110,7 @@ abstract class AbstractFailureReportingFunctionalTest extends AbstractConsoleGro
         !outputWithoutFailure.contains("Build failed with an exception.")
         !outputWithoutFailure.contains("* What went wrong:")
 
+        result.assertHasRawErrorOutput(failureMessage)
         outputWithFailure.contains("BUILD FAILED")
 
         where:

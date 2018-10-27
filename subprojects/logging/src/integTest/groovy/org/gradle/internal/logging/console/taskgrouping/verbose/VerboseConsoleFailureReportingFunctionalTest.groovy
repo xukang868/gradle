@@ -17,9 +17,11 @@
 package org.gradle.internal.logging.console.taskgrouping.verbose
 
 import org.gradle.api.logging.configuration.ConsoleOutput
-import org.gradle.internal.logging.console.taskgrouping.AbstractFailureReportingFunctionalTest
+import org.gradle.internal.logging.console.taskgrouping.AbstractBuildResultFunctionalTest
 
 
-class VerboseConsoleFailureReportingFunctionalTest extends AbstractFailureReportingFunctionalTest {
+class VerboseConsoleFailureReportingFunctionalTest extends AbstractBuildResultFunctionalTest {
     ConsoleOutput consoleType = ConsoleOutput.Verbose
+    String failureMessage = buildFailedStyled.errorOutput
+    String successMessage = buildSuccessStyled.output
 }

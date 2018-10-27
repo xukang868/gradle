@@ -17,8 +17,10 @@
 package org.gradle.internal.logging.console.taskgrouping.plain
 
 import org.gradle.api.logging.configuration.ConsoleOutput
-import org.gradle.internal.logging.console.taskgrouping.AbstractFailureReportingFunctionalTest
+import org.gradle.internal.logging.console.taskgrouping.AbstractBuildResultFunctionalTest
 
-class PlainConsoleFailureReportingFunctionalTest extends AbstractFailureReportingFunctionalTest {
+class PlainConsoleFailureReportingFunctionalTest extends AbstractBuildResultFunctionalTest {
     ConsoleOutput consoleType = ConsoleOutput.Plain
+    String failureMessage = buildFailed
+    String successMessage = buildSuccess
 }
