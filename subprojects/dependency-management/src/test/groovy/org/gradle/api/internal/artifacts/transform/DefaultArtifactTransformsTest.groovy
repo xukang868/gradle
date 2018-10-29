@@ -165,7 +165,6 @@ class DefaultArtifactTransformsTest extends Specification {
                 }
             }
         }
-        _ * transformation.hasCachedResult(_ as TransformationSubject) >> false
         _ * transformation.getDisplayName() >> "transform"
 
         1 * transformation.transform({ it.files == [sourceArtifactFile]}) >> TransformationSubject.initial(sourceArtifactId, sourceArtifactFile).transformationSuccessful(ImmutableList.of(outFile1, outFile2))

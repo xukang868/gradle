@@ -60,19 +60,6 @@ public class TransformationStep implements Transformation {
     }
 
     @Override
-    public boolean hasCachedResult(TransformationSubject subject) {
-        if (subject.getFailure() != null) {
-            return true;
-        }
-        for (File file : subject.getFiles()) {
-            if (!transformerInvoker.hasCachedResult(file, transformer)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    @Override
     public String getDisplayName() {
         return transformer.getDisplayName();
     }

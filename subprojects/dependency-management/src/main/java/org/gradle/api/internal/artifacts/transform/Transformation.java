@@ -32,11 +32,6 @@ public interface Transformation extends Describable {
     TransformationSubject transform(TransformationSubject subject);
 
     /**
-     * Returns true if there is a cached result in memory, meaning that a call to {@link #transform(TransformationSubject)} will be fast.
-     */
-    boolean hasCachedResult(TransformationSubject subject);
-
-    /**
      * Extract the transformation steps from this transformation.
      */
     void visitTransformationSteps(Action<? super TransformationStep> action);
