@@ -48,12 +48,12 @@ class BuildScanPluginSmokeTest extends AbstractSmokeTest {
     }
 
     @Unroll
-    "gracefully succeeds without capturing scan with unsupported version #version"() {
+    "fail without capturing scan with unsupported version #version"() {
         when:
         usePluginVersion version
 
         and:
-        def output = build("--scan").output
+        def output = buildAndFail("--scan").output
 
         then:
         output.contains("This version of Gradle requires version $MIN_SUPPORTED_VERSION of the build scan plugin or later.")
