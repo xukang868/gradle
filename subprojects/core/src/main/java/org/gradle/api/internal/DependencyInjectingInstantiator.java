@@ -71,7 +71,7 @@ public class DependencyInjectingInstantiator implements Instantiator {
             } catch (InvocationTargetException e) {
                 throw UncheckedException.throwAsUncheckedException(e.getCause());
             }
-        } catch (Exception t) {
+        } catch (Throwable t) {
             throw new ObjectInstantiationException(type, t);
         }
     }
