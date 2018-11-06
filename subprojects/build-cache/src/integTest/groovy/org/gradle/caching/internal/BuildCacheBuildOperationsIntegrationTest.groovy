@@ -225,7 +225,7 @@ class BuildCacheBuildOperationsIntegrationTest extends AbstractIntegrationSpec {
 
     def "records unpack failure"() {
         when:
-        local("reader.execute(new File('not.there'))", "writer.writeTo(new ${NullOutputStream.name}())")
+        local("reader.execute(new File('not.there'))", "")
         settingsFile << """
             buildCache { local($localCacheClass) }
         """
