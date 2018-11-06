@@ -151,7 +151,7 @@ abstract class AbstractBasicGroupedTaskLoggingFunctionalTest extends AbstractCon
                         logger.quiet 'Before'
                         ${callFromBuild('a-waiting')}
                         logger.quiet 'After'
-                        assert false
+                        throw new RuntimeException("Boom")
                     }
                 }
             }

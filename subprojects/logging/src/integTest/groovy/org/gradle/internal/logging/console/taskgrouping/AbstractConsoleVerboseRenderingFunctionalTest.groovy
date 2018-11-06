@@ -25,7 +25,7 @@ abstract class AbstractConsoleVerboseRenderingFunctionalTest extends AbstractCon
         buildFile << '''
             task myFailure {
                 doLast {
-                    assert false
+                    throw new RuntimeException("Ouch")
                 }
             }
         '''
