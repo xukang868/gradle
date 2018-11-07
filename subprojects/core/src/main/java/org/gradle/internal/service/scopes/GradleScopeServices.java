@@ -69,7 +69,6 @@ import org.gradle.internal.cleanup.DefaultBuildOutputCleanupRegistry;
 import org.gradle.internal.concurrent.CompositeStoppable;
 import org.gradle.internal.event.ListenerBroadcast;
 import org.gradle.internal.event.ListenerManager;
-import org.gradle.internal.id.UniqueId;
 import org.gradle.internal.logging.LoggingManagerInternal;
 import org.gradle.internal.logging.text.StyledTextOutputFactory;
 import org.gradle.internal.operations.BuildOperationExecutor;
@@ -77,11 +76,6 @@ import org.gradle.internal.reflect.Instantiator;
 import org.gradle.internal.resources.ResourceLockCoordinationService;
 import org.gradle.internal.scan.BuildScanServices;
 import org.gradle.internal.scan.config.BuildScanPluginApplied;
-import org.gradle.internal.scan.scopeids.BuildScanScopeIds;
-import org.gradle.internal.scan.scopeids.DefaultBuildScanScopeIds;
-import org.gradle.internal.scopeids.id.BuildInvocationScopeId;
-import org.gradle.internal.scopeids.id.UserScopeId;
-import org.gradle.internal.scopeids.id.WorkspaceScopeId;
 import org.gradle.internal.service.DefaultServiceRegistry;
 import org.gradle.internal.service.ServiceRegistration;
 import org.gradle.internal.service.ServiceRegistry;
@@ -242,20 +236,6 @@ public class GradleScopeServices extends DefaultServiceRegistry {
 
     protected ConfigurationTargetIdentifier createConfigurationTargetIdentifier(GradleInternal gradle) {
         return ConfigurationTargetIdentifier.of(gradle);
-    }
-
-    // Note: This would be better housed in a scope that encapsulated the tree of Gradle objects.
-    // as we don't have this right now we simulate it by reaching up the tree.
-    protected BuildInvocationScopeId createBuildScopeId(GradleInternal gradle) {
-        if (gradle.getParent() == null) {
-            return new BuildInvocationScopeId(UniqueId.generate());
-        } else {
-            return gradle.getRoot().getServices().get(BuildInvocationScopeId.class);
-        }
-    }
-
-    protected BuildScanScopeIds createBuildScanScopeIds(BuildInvocationScopeId buildInvocationScopeId, WorkspaceScopeId workspaceScopeId, UserScopeId userScopeId) {
-        return new DefaultBuildScanScopeIds(buildInvocationScopeId, workspaceScopeId, userScopeId);
     }
 
     @Override

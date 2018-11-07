@@ -17,14 +17,20 @@
 package org.gradle.internal.service.scopes;
 
 import org.gradle.api.Action;
-import org.gradle.initialization.exception.ExceptionAnalyser;
 import org.gradle.api.internal.project.DefaultProjectStateRegistry;
 import org.gradle.api.logging.configuration.LoggingConfiguration;
 import org.gradle.api.logging.configuration.ShowStacktrace;
 import org.gradle.initialization.exception.DefaultExceptionAnalyser;
+import org.gradle.initialization.exception.ExceptionAnalyser;
 import org.gradle.initialization.exception.MultipleBuildFailuresExceptionAnalyser;
 import org.gradle.initialization.exception.StackTraceSanitizingExceptionAnalyser;
 import org.gradle.internal.event.ListenerManager;
+import org.gradle.internal.id.UniqueId;
+import org.gradle.internal.scan.scopeids.BuildScanScopeIds;
+import org.gradle.internal.scan.scopeids.DefaultBuildScanScopeIds;
+import org.gradle.internal.scopeids.id.BuildInvocationScopeId;
+import org.gradle.internal.scopeids.id.UserScopeId;
+import org.gradle.internal.scopeids.id.WorkspaceScopeId;
 import org.gradle.internal.service.DefaultServiceRegistry;
 import org.gradle.internal.service.ServiceRegistration;
 import org.gradle.internal.service.ServiceRegistry;
@@ -53,7 +59,15 @@ public class BuildTreeScopeServices extends DefaultServiceRegistry {
         return exceptionAnalyser;
     }
 
-    public DefaultProjectStateRegistry createProjectPathRegistry(WorkerLeaseService workerLeaseService) {
+    protected DefaultProjectStateRegistry createProjectPathRegistry(WorkerLeaseService workerLeaseService) {
         return new DefaultProjectStateRegistry(workerLeaseService);
+    }
+
+    protected BuildInvocationScopeId createBuildScopeId() {
+        return new BuildInvocationScopeId(UniqueId.generate());
+    }
+
+    protected BuildScanScopeIds createBuildScanScopeIds(BuildInvocationScopeId buildInvocationScopeId, WorkspaceScopeId workspaceScopeId, UserScopeId userScopeId) {
+        return new DefaultBuildScanScopeIds(buildInvocationScopeId, workspaceScopeId, userScopeId);
     }
 }
