@@ -26,6 +26,7 @@ import org.gradle.internal.concurrent.CompositeStoppable;
 import org.gradle.internal.concurrent.ExecutorFactory;
 import org.gradle.internal.concurrent.ParallelismConfigurationManager;
 import org.gradle.internal.event.ListenerManager;
+import org.gradle.internal.id.UniqueId;
 import org.gradle.internal.logging.progress.ProgressLoggerFactory;
 import org.gradle.internal.logging.sink.OutputEventListenerManager;
 import org.gradle.internal.operations.BuildOperationExecutor;
@@ -40,6 +41,7 @@ import org.gradle.internal.operations.notify.BuildOperationNotificationListenerR
 import org.gradle.internal.operations.notify.BuildOperationNotificationValve;
 import org.gradle.internal.operations.trace.BuildOperationTrace;
 import org.gradle.internal.resources.ResourceLockCoordinationService;
+import org.gradle.internal.scopeids.id.BuildInvocationScopeId;
 import org.gradle.internal.service.DefaultServiceRegistry;
 import org.gradle.internal.service.ServiceRegistry;
 import org.gradle.internal.time.Clock;
@@ -69,6 +71,7 @@ public class CrossBuildSessionScopeServices implements Closeable {
     private final BuildOperationListenerManager buildOperationListenerManager;
 
     private final Services services;
+    private BuildInvocationScopeId buildInvocationScopeId = new BuildInvocationScopeId(UniqueId.generate());
 
     public CrossBuildSessionScopeServices(ServiceRegistry parent, StartParameter startParameter) {
         this.services = new Services(parent);
@@ -112,6 +115,10 @@ public class CrossBuildSessionScopeServices implements Closeable {
 
     BuildOperationNotificationValve createBuildOperationNotificationValve() {
         return buildOperationNotificationBridge.getValve();
+    }
+
+    protected BuildInvocationScopeId createBuildScopeId() {
+        return buildInvocationScopeId;
     }
 
     @Override

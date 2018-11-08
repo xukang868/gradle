@@ -25,7 +25,6 @@ import org.gradle.initialization.exception.ExceptionAnalyser;
 import org.gradle.initialization.exception.MultipleBuildFailuresExceptionAnalyser;
 import org.gradle.initialization.exception.StackTraceSanitizingExceptionAnalyser;
 import org.gradle.internal.event.ListenerManager;
-import org.gradle.internal.id.UniqueId;
 import org.gradle.internal.scan.scopeids.BuildScanScopeIds;
 import org.gradle.internal.scan.scopeids.DefaultBuildScanScopeIds;
 import org.gradle.internal.scopeids.id.BuildInvocationScopeId;
@@ -61,10 +60,6 @@ public class BuildTreeScopeServices extends DefaultServiceRegistry {
 
     protected DefaultProjectStateRegistry createProjectPathRegistry(WorkerLeaseService workerLeaseService) {
         return new DefaultProjectStateRegistry(workerLeaseService);
-    }
-
-    protected BuildInvocationScopeId createBuildScopeId() {
-        return new BuildInvocationScopeId(UniqueId.generate());
     }
 
     protected BuildScanScopeIds createBuildScanScopeIds(BuildInvocationScopeId buildInvocationScopeId, WorkspaceScopeId workspaceScopeId, UserScopeId userScopeId) {
