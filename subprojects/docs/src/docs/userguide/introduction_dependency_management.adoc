@@ -71,5 +71,8 @@ Gradle takes your dependency declarations and repository definitions and attempt
 ** When the dependency is declared by a concrete version and a module metadata file is found in a repository, there is no need to continue searching later repositories and the remainder of the process is short-circuited.
 
 * All of the artifacts for the module are then requested from the _same repository_ that was chosen in the process above.
++
+[[note:http-retries]]
+If HTTP calls to that repository fail, Gradle will retry 3 times starting at 1s and increasing the amount of time between each call. The number of attempts and length of time between attempts is not configurable.
 
 The dependency resolution process is highly customizable to meet enterprise requirements. For more information, see the chapter on <<customizing_dependency_resolution_behavior.adoc#customizing_dependency_resolution_behavior,customizing dependency resolution>>.
