@@ -18,7 +18,9 @@ package org.gradle.tooling.internal.provider;
 
 import org.gradle.initialization.BuildEventConsumer;
 import org.gradle.internal.operations.BuildOperationListener;
+import org.gradle.profile.ProfileListener;
 
 public interface SubscribableBuildActionRunnerRegistration {
-    Iterable<BuildOperationListener> createListeners(BuildClientSubscriptions clientSubscriptions, BuildEventConsumer consumer);
+    Iterable<BuildOperationListener> createBuildOperationListeners(BuildClientSubscriptions clientSubscriptions, BuildEventConsumer consumer);
+    Iterable<ProfileListener> createProfileListeners(BuildClientSubscriptions clientSubscriptions, BuildEventConsumer consumer);
 }

@@ -34,6 +34,11 @@ public enum OperationType {
     TASK,
 
     /**
+     * Flag for build profile events.
+     */
+    PROFILE,
+
+    /**
      * Flag for operations with no specific type.
      */
     GENERIC

@@ -65,6 +65,10 @@ public class BuildProfile {
         return buildStarted;
     }
 
+    public long getBuildFinished() {
+        return buildFinished;
+    }
+
     /**
      * Get a description of this profiled build. It contains info about tasks passed to gradle as targets from the command line.
      */

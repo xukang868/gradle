@@ -30,7 +30,7 @@ public interface ModelIdentifier extends InternalProtocolInterface {
     /**
      * The name of the null model.
      */
-    final String NULL_MODEL = Void.class.getName();
+    String NULL_MODEL = Void.class.getName();
 
     /**
      * The name of the model.

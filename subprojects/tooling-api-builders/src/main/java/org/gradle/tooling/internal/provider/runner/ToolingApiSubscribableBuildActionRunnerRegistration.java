@@ -23,15 +23,19 @@ import org.gradle.internal.operations.OperationFinishEvent;
 import org.gradle.internal.operations.OperationIdentifier;
 import org.gradle.internal.operations.OperationProgressEvent;
 import org.gradle.internal.operations.OperationStartEvent;
+import org.gradle.profile.ProfileListener;
 import org.gradle.tooling.internal.provider.BuildClientSubscriptions;
 import org.gradle.tooling.internal.provider.SubscribableBuildActionRunnerRegistration;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singleton;
+
 public class ToolingApiSubscribableBuildActionRunnerRegistration implements SubscribableBuildActionRunnerRegistration {
     @Override
-    public Iterable<BuildOperationListener> createListeners(BuildClientSubscriptions clientSubscriptions, BuildEventConsumer consumer) {
+    public Iterable<BuildOperationListener> createBuildOperationListeners(BuildClientSubscriptions clientSubscriptions, BuildEventConsumer consumer) {
         List<BuildOperationListener> listeners = new ArrayList<BuildOperationListener>();
         if (clientSubscriptions.isSendTestProgressEvents()) {
             listeners.add(new ClientForwardingTestOperationListener(consumer, clientSubscriptions));
@@ -44,6 +48,14 @@ public class ToolingApiSubscribableBuildActionRunnerRegistration implements Subs
             listeners.add(new ClientForwardingTaskOperationListener(consumer, clientSubscriptions, buildListener));
         }
         return listeners;
+    }
+
+    @Override
+    public Iterable<ProfileListener> createProfileListeners(BuildClientSubscriptions clientSubscriptions, BuildEventConsumer consumer) {
+        if (clientSubscriptions.isPublishBuildProfileEvent()) {
+            return singleton(new ClientForwardingBuildProfileListener(consumer));
+        }
+        return emptyList();
     }
 
     private static final BuildOperationListener NO_OP = new BuildOperationListener() {

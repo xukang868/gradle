@@ -17,16 +17,69 @@ package org.gradle.tooling.internal.consumer.parameters;
 
 import org.gradle.internal.event.ListenerBroadcast;
 import org.gradle.tooling.Failure;
-import org.gradle.tooling.events.*;
-import org.gradle.tooling.events.internal.*;
-import org.gradle.tooling.events.task.*;
-import org.gradle.tooling.events.task.internal.*;
-import org.gradle.tooling.events.test.*;
-import org.gradle.tooling.events.test.internal.*;
+import org.gradle.tooling.events.FinishEvent;
+import org.gradle.tooling.events.OperationDescriptor;
+import org.gradle.tooling.events.OperationResult;
+import org.gradle.tooling.events.ProgressEvent;
+import org.gradle.tooling.events.ProgressListener;
+import org.gradle.tooling.events.StartEvent;
+import org.gradle.tooling.events.internal.DefaultFinishEvent;
+import org.gradle.tooling.events.internal.DefaultOperationDescriptor;
+import org.gradle.tooling.events.internal.DefaultOperationFailureResult;
+import org.gradle.tooling.events.internal.DefaultOperationSuccessResult;
+import org.gradle.tooling.events.internal.DefaultStartEvent;
+import org.gradle.tooling.events.profile.internal.DefaultBuildProfileEvent;
+import org.gradle.tooling.events.profile.internal.DefaultTimeInterval;
+import org.gradle.tooling.events.task.TaskFinishEvent;
+import org.gradle.tooling.events.task.TaskOperationDescriptor;
+import org.gradle.tooling.events.task.TaskOperationResult;
+import org.gradle.tooling.events.task.TaskProgressEvent;
+import org.gradle.tooling.events.task.TaskStartEvent;
+import org.gradle.tooling.events.task.internal.DefaultTaskFailureResult;
+import org.gradle.tooling.events.task.internal.DefaultTaskFinishEvent;
+import org.gradle.tooling.events.task.internal.DefaultTaskOperationDescriptor;
+import org.gradle.tooling.events.task.internal.DefaultTaskSkippedResult;
+import org.gradle.tooling.events.task.internal.DefaultTaskStartEvent;
+import org.gradle.tooling.events.task.internal.DefaultTaskSuccessResult;
+import org.gradle.tooling.events.test.JvmTestKind;
+import org.gradle.tooling.events.test.TestFinishEvent;
+import org.gradle.tooling.events.test.TestOperationDescriptor;
+import org.gradle.tooling.events.test.TestOperationResult;
+import org.gradle.tooling.events.test.TestProgressEvent;
+import org.gradle.tooling.events.test.TestStartEvent;
+import org.gradle.tooling.events.test.internal.DefaultJvmTestOperationDescriptor;
+import org.gradle.tooling.events.test.internal.DefaultTestFailureResult;
+import org.gradle.tooling.events.test.internal.DefaultTestFinishEvent;
+import org.gradle.tooling.events.test.internal.DefaultTestOperationDescriptor;
+import org.gradle.tooling.events.test.internal.DefaultTestSkippedResult;
+import org.gradle.tooling.events.test.internal.DefaultTestStartEvent;
+import org.gradle.tooling.events.test.internal.DefaultTestSuccessResult;
 import org.gradle.tooling.internal.consumer.DefaultFailure;
 import org.gradle.tooling.internal.protocol.InternalBuildProgressListener;
 import org.gradle.tooling.internal.protocol.InternalFailure;
-import org.gradle.tooling.internal.protocol.events.*;
+import org.gradle.tooling.internal.protocol.events.InternalBuildProfileEvent;
+import org.gradle.tooling.internal.protocol.events.InternalFailureResult;
+import org.gradle.tooling.internal.protocol.events.InternalJvmTestDescriptor;
+import org.gradle.tooling.internal.protocol.events.InternalOperationDescriptor;
+import org.gradle.tooling.internal.protocol.events.InternalOperationFinishedProgressEvent;
+import org.gradle.tooling.internal.protocol.events.InternalOperationResult;
+import org.gradle.tooling.internal.protocol.events.InternalOperationStartedProgressEvent;
+import org.gradle.tooling.internal.protocol.events.InternalProgressEvent;
+import org.gradle.tooling.internal.protocol.events.InternalSuccessResult;
+import org.gradle.tooling.internal.protocol.events.InternalTaskCachedResult;
+import org.gradle.tooling.internal.protocol.events.InternalTaskDescriptor;
+import org.gradle.tooling.internal.protocol.events.InternalTaskFailureResult;
+import org.gradle.tooling.internal.protocol.events.InternalTaskResult;
+import org.gradle.tooling.internal.protocol.events.InternalTaskSkippedResult;
+import org.gradle.tooling.internal.protocol.events.InternalTaskSuccessResult;
+import org.gradle.tooling.internal.protocol.events.InternalTestDescriptor;
+import org.gradle.tooling.internal.protocol.events.InternalTestFailureResult;
+import org.gradle.tooling.internal.protocol.events.InternalTestFinishedProgressEvent;
+import org.gradle.tooling.internal.protocol.events.InternalTestProgressEvent;
+import org.gradle.tooling.internal.protocol.events.InternalTestResult;
+import org.gradle.tooling.internal.protocol.events.InternalTestSkippedResult;
+import org.gradle.tooling.internal.protocol.events.InternalTestStartedProgressEvent;
+import org.gradle.tooling.internal.protocol.events.InternalTestSuccessResult;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -42,14 +95,17 @@ public class BuildProgressListenerAdapter implements InternalBuildProgressListen
     private final ListenerBroadcast<ProgressListener> testProgressListeners = new ListenerBroadcast<ProgressListener>(ProgressListener.class);
     private final ListenerBroadcast<ProgressListener> taskProgressListeners = new ListenerBroadcast<ProgressListener>(ProgressListener.class);
     private final ListenerBroadcast<ProgressListener> buildOperationProgressListeners = new ListenerBroadcast<ProgressListener>(ProgressListener.class);
+    private final ListenerBroadcast<ProgressListener> profileListeners = new ListenerBroadcast<ProgressListener>(ProgressListener.class);
     private final Map<Object, OperationDescriptor> descriptorCache = new HashMap<Object, OperationDescriptor>();
 
     BuildProgressListenerAdapter(List<ProgressListener> testProgressListeners,
-            List<ProgressListener> taskProgressListeners,
-            List<ProgressListener> buildOperationProgressListeners) {
+                                 List<ProgressListener> taskProgressListeners,
+                                 List<ProgressListener> buildOperationProgressListeners,
+                                 List<ProgressListener> profileListeners) {
         this.testProgressListeners.addAll(testProgressListeners);
         this.taskProgressListeners.addAll(taskProgressListeners);
         this.buildOperationProgressListeners.addAll(buildOperationProgressListeners);
+        this.profileListeners.addAll(profileListeners);
     }
 
     @Override
@@ -63,6 +119,9 @@ public class BuildProgressListenerAdapter implements InternalBuildProgressListen
         }
         if (!buildOperationProgressListeners.isEmpty()) {
             operations.add(InternalBuildProgressListener.BUILD_EXECUTION);
+        }
+        if (!profileListeners.isEmpty()) {
+            operations.add(InternalBuildProgressListener.BUILD_PROFILE);
         }
         return operations;
     }
@@ -79,6 +138,8 @@ public class BuildProgressListenerAdapter implements InternalBuildProgressListen
             // Special case for events defined prior to InternalBuildProgressEvent
             InternalTestProgressEvent progressEvent = (InternalTestProgressEvent) event;
             broadcastTestProgressEvent(progressEvent);
+        } else if (event instanceof InternalBuildProfileEvent) {
+            broadcastBuildProfileEvent((InternalBuildProfileEvent) event);
         } else if (event instanceof InternalProgressEvent) {
             InternalProgressEvent progressEvent = (InternalProgressEvent) event;
             if (progressEvent.getDescriptor() instanceof InternalTaskDescriptor) {
@@ -113,6 +174,10 @@ public class BuildProgressListenerAdapter implements InternalBuildProgressListen
         if (taskProgressEvent != null) {
             taskProgressListeners.getSource().statusChanged(taskProgressEvent);
         }
+    }
+
+    private void broadcastBuildProfileEvent(InternalBuildProfileEvent event) {
+        profileListeners.getSource().statusChanged(buildProfileEvent(event));
     }
 
     private void broadcastProgressEvent(InternalProgressEvent event) {
@@ -180,6 +245,11 @@ public class BuildProgressListenerAdapter implements InternalBuildProgressListen
     private FinishEvent finishedEvent(InternalOperationFinishedProgressEvent event) {
         OperationDescriptor descriptor = removeDescriptor(OperationDescriptor.class, event.getDescriptor());
         return new DefaultFinishEvent(event.getEventTime(), event.getDisplayName(), descriptor, toResult(event.getResult()));
+    }
+
+    private ProgressEvent buildProfileEvent(InternalBuildProfileEvent event) {
+        OperationDescriptor descriptor = addDescriptor(event.getDescriptor(), toDescriptor(event.getDescriptor()));
+        return new DefaultBuildProfileEvent(event.getEventTime(), event.getDisplayName(), descriptor, new DefaultTimeInterval(event.getTotalBuildTime().getStart(), event.getTotalBuildTime().getEnd()));
     }
 
     private synchronized <T extends OperationDescriptor> T addDescriptor(InternalOperationDescriptor descriptor, T clientDescriptor) {

@@ -171,6 +171,9 @@ public abstract class AbstractLongRunningOperation<T extends AbstractLongRunning
         if (eventTypes.contains(OperationType.GENERIC)) {
             operationParamsBuilder.addBuildOperationProgressListeners(listener);
         }
+        if (eventTypes.contains(OperationType.PROFILE)) {
+            operationParamsBuilder.addProfileListener(listener);
+        }
         return getThis();
     }
 

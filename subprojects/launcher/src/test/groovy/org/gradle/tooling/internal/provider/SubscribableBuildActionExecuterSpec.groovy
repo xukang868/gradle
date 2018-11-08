@@ -43,9 +43,9 @@ class SubscribableBuildActionExecuterSpec extends Specification {
         BuildOperationListener listener2 = Mock(BuildOperationListener)
 
         _ * buildRequestContext.eventConsumer >> consumer
-        _ * registration.createListeners(_, consumer) >> [listener1, listener2]
+        _ * registration.createBuildOperationListeners(_, consumer) >> [listener1, listener2]
 
-        def runner = new SubscribableBuildActionExecuter(buildActionExecuter, buildOperationService, [registration])
+        def runner = new SubscribableBuildActionExecuter(buildActionExecuter, buildOperationService, listenerManager, [registration])
 
         when:
         runner.execute(buildAction, buildRequestContext, buildActionParameters, serviceRegistry)

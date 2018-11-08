@@ -356,11 +356,11 @@ class BuildProgressListenerAdapterForTaskOperationsTest extends Specification {
     }
 
     private static BuildProgressListenerAdapter createAdapter() {
-        new BuildProgressListenerAdapter([], [], [])
+        new BuildProgressListenerAdapter([], [], [], this.profileListeners)
     }
 
     private static BuildProgressListenerAdapter createAdapter(ProgressListener taskListener) {
-        new BuildProgressListenerAdapter([], [taskListener], [])
+        new BuildProgressListenerAdapter([], [taskListener], [], this.profileListeners)
     }
 
 }
