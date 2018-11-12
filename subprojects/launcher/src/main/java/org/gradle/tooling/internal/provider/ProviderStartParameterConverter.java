@@ -95,6 +95,11 @@ class ProviderStartParameterConverter {
             startParameter.setLogLevel(parameters.getBuildLogLevel());
         }
 
+        if (parameters.getBuildProfileConsumer() != null) {
+            // TODO don't generate HTML report unless explicitly requested via --profile
+            startParameter.setProfile(true);
+        }
+
         return startParameter;
     }
 }

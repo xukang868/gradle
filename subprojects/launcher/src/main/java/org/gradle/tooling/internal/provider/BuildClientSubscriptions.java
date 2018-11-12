@@ -26,11 +26,13 @@ public class BuildClientSubscriptions implements Serializable {
     private final boolean sendTestProgressEvents;
     private final boolean sendTaskProgressEvents;
     private final boolean sendBuildProgressEvents;
+    private final boolean listenForBuildProfileEvents;
 
-    public BuildClientSubscriptions(boolean sendTestProgressEvents, boolean sendTaskProgressEvents, boolean sendBuildProgressEvents) {
+    public BuildClientSubscriptions(boolean sendTestProgressEvents, boolean sendTaskProgressEvents, boolean sendBuildProgressEvents, boolean listenForBuildProfileEvents) {
         this.sendTestProgressEvents = sendTestProgressEvents;
         this.sendTaskProgressEvents = sendTaskProgressEvents;
         this.sendBuildProgressEvents = sendBuildProgressEvents;
+        this.listenForBuildProfileEvents = listenForBuildProfileEvents;
     }
 
     public boolean isSendTestProgressEvents() {
@@ -45,8 +47,12 @@ public class BuildClientSubscriptions implements Serializable {
         return sendBuildProgressEvents;
     }
 
-    public boolean isSendAnyProgressEvents() {
-        return sendTestProgressEvents || sendTaskProgressEvents || sendBuildProgressEvents;
+    public boolean isListenForBuildProfileEvents() {
+        return listenForBuildProfileEvents;
+    }
+
+    public boolean isListenForAnyEvents() {
+        return sendTestProgressEvents || sendTaskProgressEvents || sendBuildProgressEvents || listenForBuildProfileEvents;
     }
 
 }

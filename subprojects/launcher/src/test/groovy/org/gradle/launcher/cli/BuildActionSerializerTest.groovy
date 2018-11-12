@@ -56,9 +56,9 @@ class BuildActionSerializerTest extends SerializerSpec {
 
         where:
         action << [
-            new ClientProvidedBuildAction(new StartParameterInternal(), new SerializedPayload(null, []), true, new BuildClientSubscriptions(true, true, true)),
-            new TestExecutionRequestAction(new BuildClientSubscriptions(true, true, true), new StartParameterInternal(), Collections.emptySet(), Collections.emptySet(), Collections.emptySet()),
-            new BuildModelAction(new StartParameterInternal(), "model", false, new BuildClientSubscriptions(true, true, true))
+            new ClientProvidedBuildAction(new StartParameterInternal(), new SerializedPayload(null, []), true, new BuildClientSubscriptions(true, true, true, true)),
+            new TestExecutionRequestAction(new BuildClientSubscriptions(true, true, true, true), new StartParameterInternal(), Collections.emptySet(), Collections.emptySet(), Collections.emptySet()),
+            new BuildModelAction(new StartParameterInternal(), "model", false, new BuildClientSubscriptions(true, true, true, true))
         ]
     }
 }

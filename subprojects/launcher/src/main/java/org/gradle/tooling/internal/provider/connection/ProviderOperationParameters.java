@@ -16,6 +16,7 @@
 package org.gradle.tooling.internal.provider.connection;
 
 import org.gradle.api.logging.LogLevel;
+import org.gradle.tooling.internal.protocol.InternalBuildProfileConsumer;
 import org.gradle.tooling.internal.protocol.InternalBuildProgressListener;
 import org.gradle.tooling.internal.protocol.InternalLaunchable;
 import org.gradle.tooling.internal.protocol.ProgressListenerVersion1;
@@ -169,4 +170,11 @@ public interface ProviderOperationParameters {
      * @since 2.8-rc-1
      */
     List<File> getInjectedPluginClasspath(List<File> defaultClasspath);
+
+    /**
+     * @since 5.1-rc-1
+     * @return When null, no profile should be produced.
+     */
+    @Nullable
+    InternalBuildProfileConsumer getBuildProfileConsumer();
 }

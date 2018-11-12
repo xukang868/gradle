@@ -50,12 +50,14 @@ import org.gradle.tooling.internal.protocol.InternalBuildAction;
 import org.gradle.tooling.internal.protocol.InternalBuildActionFailureException;
 import org.gradle.tooling.internal.protocol.InternalBuildActionVersion2;
 import org.gradle.tooling.internal.protocol.InternalBuildCancelledException;
+import org.gradle.tooling.internal.protocol.InternalBuildProfileConsumer;
 import org.gradle.tooling.internal.protocol.InternalBuildProgressListener;
 import org.gradle.tooling.internal.protocol.InternalPhasedAction;
 import org.gradle.tooling.internal.protocol.InternalUnsupportedModelException;
 import org.gradle.tooling.internal.protocol.ModelIdentifier;
 import org.gradle.tooling.internal.protocol.PhasedActionResultListener;
 import org.gradle.tooling.internal.protocol.events.InternalProgressEvent;
+import org.gradle.tooling.internal.protocol.profile.InternalBuildProfile;
 import org.gradle.tooling.internal.protocol.test.InternalTestExecutionException;
 import org.gradle.tooling.internal.provider.connection.ProviderConnectionParameters;
 import org.gradle.tooling.internal.provider.connection.ProviderOperationParameters;
@@ -289,17 +291,23 @@ public class ProviderConnection {
         }
     }
 
-    private static final class BuildProgressListenerInvokingBuildEventConsumer implements BuildEventConsumer {
+    private static final class ForwardingBuildEventConsumer implements BuildEventConsumer {
         private final InternalBuildProgressListener buildProgressListener;
+        private final InternalBuildProfileConsumer buildProfileConsumer;
 
-        private BuildProgressListenerInvokingBuildEventConsumer(InternalBuildProgressListener buildProgressListener) {
+        private ForwardingBuildEventConsumer(InternalBuildProgressListener buildProgressListener, InternalBuildProfileConsumer buildProfileConsumer) {
             this.buildProgressListener = buildProgressListener;
+            this.buildProfileConsumer = buildProfileConsumer;
         }
 
         @Override
         public void dispatch(Object event) {
             if (event instanceof InternalProgressEvent) {
+                // TODO check for null delegate
                 this.buildProgressListener.onEvent(event);
+            }
+            else if (event instanceof InternalBuildProfile && this.buildProfileConsumer != null) {
+                this.buildProfileConsumer.accept(event);
             }
         }
     }
@@ -317,12 +325,14 @@ public class ProviderConnection {
 
         private static ProgressListenerConfiguration from(ProviderOperationParameters providerParameters) {
             InternalBuildProgressListener buildProgressListener = providerParameters.getBuildProgressListener(null);
+            InternalBuildProfileConsumer buildProfileConsumer = providerParameters.getBuildProfileConsumer();
             boolean listenToTestProgress = buildProgressListener != null && buildProgressListener.getSubscribedOperations().contains(InternalBuildProgressListener.TEST_EXECUTION);
             boolean listenToTaskProgress = buildProgressListener != null && buildProgressListener.getSubscribedOperations().contains(InternalBuildProgressListener.TASK_EXECUTION);
             boolean listenToBuildProgress = buildProgressListener != null && buildProgressListener.getSubscribedOperations().contains(InternalBuildProgressListener.BUILD_EXECUTION);
-            BuildClientSubscriptions clientSubscriptions = new BuildClientSubscriptions(listenToTestProgress, listenToTaskProgress, listenToBuildProgress);
+            boolean listenForBuildProfile = buildProfileConsumer != null;
+            BuildClientSubscriptions clientSubscriptions = new BuildClientSubscriptions(listenToTestProgress, listenToTaskProgress, listenToBuildProgress, listenForBuildProfile);
             FailsafeBuildProgressListenerAdapter wrapper = new FailsafeBuildProgressListenerAdapter(buildProgressListener);
-            BuildEventConsumer buildEventConsumer = clientSubscriptions.isSendAnyProgressEvents() ? new BuildProgressListenerInvokingBuildEventConsumer(wrapper) : new NoOpBuildEventConsumer();
+            BuildEventConsumer buildEventConsumer = clientSubscriptions.isListenForAnyEvents() ? new ForwardingBuildEventConsumer(wrapper, buildProfileConsumer) : new NoOpBuildEventConsumer();
             if (Boolean.TRUE.equals(providerParameters.isEmbedded())) {
                 // Contract requires build events are delivered by a single thread. This is taken care of by the daemon client when not in embedded mode
                 // Need to apply some synchronization when in embedded mode

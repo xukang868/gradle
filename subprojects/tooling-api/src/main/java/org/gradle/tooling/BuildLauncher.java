@@ -15,8 +15,12 @@
  */
 package org.gradle.tooling;
 
+import org.gradle.api.Incubating;
 import org.gradle.tooling.model.Launchable;
 import org.gradle.tooling.model.Task;
+import org.gradle.tooling.model.profile.BuildProfile;
+
+import java.util.function.Consumer;
 
 /**
  * A {@code BuildLauncher} allows you to configure and execute a Gradle build.
@@ -117,6 +121,18 @@ public interface BuildLauncher extends ConfigurableLauncher<BuildLauncher> {
      * @since 1.12
      */
     BuildLauncher forLaunchables(Iterable<? extends Launchable> launchables);
+
+    /**
+     * Requests the build to be profiled and the result to be passed to the specified consumer.
+     *
+     * <p>Requires the build to run with Gradle 5.1 or later.
+     *
+     * @param consumer The consumer that should receive the profile of this build.
+     * @return this
+     * @since 5.1
+     */
+    @Incubating
+    BuildLauncher requestProfile(Consumer<BuildProfile> consumer);
 
     /**
      * Executes the build, blocking until it is complete.

@@ -24,9 +24,11 @@ import org.gradle.tooling.internal.consumer.connection.ConsumerConnection;
 import org.gradle.tooling.internal.consumer.parameters.ConsumerOperationParameters;
 import org.gradle.tooling.model.Launchable;
 import org.gradle.tooling.model.Task;
+import org.gradle.tooling.model.profile.BuildProfile;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.function.Consumer;
 
 public class DefaultBuildLauncher extends AbstractLongRunningOperation<DefaultBuildLauncher> implements BuildLauncher {
     protected final AsyncConsumerActionExecutor connection;
@@ -69,6 +71,12 @@ public class DefaultBuildLauncher extends AbstractLongRunningOperation<DefaultBu
     }
 
     protected void preprocessLaunchables(Iterable<? extends Launchable> launchables) {
+    }
+
+    @Override
+    public BuildLauncher requestProfile(Consumer<BuildProfile> consumer) {
+        operationParamsBuilder.addBuildProfileConsumer(consumer);
+        return this;
     }
 
     public void run() {
