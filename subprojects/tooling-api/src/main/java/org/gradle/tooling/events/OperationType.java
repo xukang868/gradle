@@ -36,6 +36,8 @@ public enum OperationType {
     /**
      * Flag for operations with no specific type.
      */
-    GENERIC
+    GENERIC,
 
+    CONFIGURATION, // NEW
+    WORK_ITEM // NEW
 }

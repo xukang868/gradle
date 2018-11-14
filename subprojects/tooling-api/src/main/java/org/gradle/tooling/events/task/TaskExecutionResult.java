@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 the original author or authors.
+ * Copyright 2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +16,20 @@
 
 package org.gradle.tooling.events.task;
 
-import org.gradle.tooling.events.PluginDescriptor;
-import org.gradle.tooling.events.StartEvent;
-
+import java.io.File;
 import java.util.List;
 
-/**
- * An event that informs about a task having started its execution.
- *
- * @since 2.5
- */
-public interface TaskStartEvent extends TaskProgressEvent, StartEvent {
-    PluginDescriptor getOriginPlugin();
-    List<String> getDependentTaskPaths();
+public interface TaskExecutionResult extends TaskOperationResult {
+    String getExecutionReason();
+    boolean isIncremental();
+    List<Change> getChanges();
+    interface Change {
+        File getFile();
+        Type getType();
+        enum Type {
+            ADDED,
+            MODIFIED,
+            REMOVED
+        }
+    }
 }
