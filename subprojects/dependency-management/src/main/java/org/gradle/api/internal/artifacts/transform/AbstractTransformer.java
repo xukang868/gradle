@@ -18,7 +18,6 @@ package org.gradle.api.internal.artifacts.transform;
 
 import com.google.common.collect.ImmutableSet;
 import org.gradle.api.InvalidUserDataException;
-import org.gradle.api.artifacts.transform.ArtifactTransform;
 import org.gradle.api.artifacts.transform.ArtifactTransformDependencies;
 import org.gradle.api.artifacts.transform.PrimaryInput;
 import org.gradle.api.artifacts.transform.Workspace;
@@ -37,16 +36,16 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 import java.util.List;
 
-public class DefaultTransformer implements Transformer {
+public abstract class AbstractTransformer<T> implements Transformer {
 
-    private final Class<? extends ArtifactTransform> implementationClass;
+    private final Class<? extends T> implementationClass;
     private final boolean requiresDependencies;
     private final Isolatable<Object[]> parameters;
-    private final InstanceFactory<? extends ArtifactTransform> instanceFactory;
+    private final InstanceFactory<? extends T> instanceFactory;
     private final HashCode inputsHash;
     private final ImmutableAttributes fromAttributes;
 
-    public DefaultTransformer(Class<? extends ArtifactTransform> implementationClass, Isolatable<Object[]> parameters, HashCode inputsHash, InstantiatorFactory instantiatorFactory, ImmutableAttributes fromAttributes) {
+    public AbstractTransformer(Class<? extends T> implementationClass, Isolatable<Object[]> parameters, HashCode inputsHash, InstantiatorFactory instantiatorFactory, ImmutableAttributes fromAttributes) {
         this.implementationClass = implementationClass;
         this.instanceFactory = instantiatorFactory.injectScheme(ImmutableSet.of(Workspace.class, PrimaryInput.class)).forType(implementationClass);
         this.requiresDependencies = instanceFactory.requiresService(ArtifactTransformDependencies.class);
@@ -64,15 +63,7 @@ public class DefaultTransformer implements Transformer {
         return fromAttributes;
     }
 
-    @Override
-    public List<File> transform(File primaryInput, File outputDir, ArtifactTransformDependencies dependencies) {
-        ArtifactTransform transformer = newTransformer(primaryInput, outputDir, dependencies);
-        transformer.setOutputDirectory(outputDir);
-        List<File> outputs = transformer.transform(primaryInput);
-        return validateOutputs(primaryInput, outputDir, outputs);
-    }
-
-    private static List<File> validateOutputs(File primaryInput, File outputDir, @Nullable List<File> outputs) {
+    protected static List<File> validateOutputs(File primaryInput, File outputDir, @Nullable List<File> outputs) {
         if (outputs == null) {
             throw new InvalidUserDataException("Transform returned null result.");
         }
@@ -96,7 +87,7 @@ public class DefaultTransformer implements Transformer {
         return outputs;
     }
 
-    private ArtifactTransform newTransformer(File inputFile, File outputDir, ArtifactTransformDependencies artifactTransformDependencies) {
+    protected T newTransformer(File inputFile, File outputDir, ArtifactTransformDependencies artifactTransformDependencies) {
         ServiceLookup services = new TransformServiceLookup(inputFile, outputDir, requiresDependencies ? artifactTransformDependencies : null);
         return instanceFactory.newInstance(services, parameters.isolate());
     }
@@ -107,7 +98,7 @@ public class DefaultTransformer implements Transformer {
     }
 
     @Override
-    public Class<? extends ArtifactTransform> getImplementationClass() {
+    public Class<? extends T> getImplementationClass() {
         return implementationClass;
     }
 
@@ -125,7 +116,7 @@ public class DefaultTransformer implements Transformer {
             return false;
         }
 
-        DefaultTransformer that = (DefaultTransformer) o;
+        AbstractTransformer that = (AbstractTransformer) o;
 
         return inputsHash.equals(that.inputsHash);
     }
