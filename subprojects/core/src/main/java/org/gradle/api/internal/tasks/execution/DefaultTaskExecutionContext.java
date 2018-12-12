@@ -20,6 +20,7 @@ import org.gradle.api.internal.tasks.TaskExecutionContext;
 import org.gradle.caching.internal.tasks.TaskOutputCachingBuildCacheKey;
 import org.gradle.execution.plan.LocalTaskNode;
 import org.gradle.internal.execution.history.AfterPreviousExecutionState;
+import org.gradle.internal.execution.history.BeforeExecutionState;
 import org.gradle.internal.time.Time;
 import org.gradle.internal.time.Timer;
 
@@ -30,6 +31,7 @@ public class DefaultTaskExecutionContext implements TaskExecutionContext {
 
     private final LocalTaskNode localTaskNode;
     private AfterPreviousExecutionState afterPreviousExecution;
+    private BeforeExecutionState beforeExecution;
     private TaskArtifactState taskArtifactState;
     private TaskOutputCachingBuildCacheKey buildCacheKey;
     private List<String> upToDateMessages;
@@ -59,6 +61,16 @@ public class DefaultTaskExecutionContext implements TaskExecutionContext {
     @Override
     public void setAfterPreviousExecution(@Nullable AfterPreviousExecutionState afterPreviousExecution) {
         this.afterPreviousExecution = afterPreviousExecution;
+    }
+
+    @Override
+    public BeforeExecutionState getBeforeExecution() {
+        return beforeExecution;
+    }
+
+    @Override
+    public void setBeforeExecution(BeforeExecutionState beforeExecution) {
+        this.beforeExecution = beforeExecution;
     }
 
     @Override

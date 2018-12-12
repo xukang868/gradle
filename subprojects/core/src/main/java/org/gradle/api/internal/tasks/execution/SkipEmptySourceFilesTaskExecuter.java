@@ -32,7 +32,8 @@ import org.gradle.caching.internal.origin.OriginMetadata;
 import org.gradle.internal.Cast;
 import org.gradle.internal.cleanup.BuildOutputCleanupRegistry;
 import org.gradle.internal.execution.OutputChangeListener;
-import org.gradle.internal.execution.history.AfterPreviousExecutionState;
+import org.gradle.internal.execution.history.BeforeExecutionState;
+import org.gradle.internal.fingerprint.CurrentFileCollectionFingerprint;
 import org.gradle.internal.fingerprint.FileCollectionFingerprint;
 import org.gradle.internal.scopeids.id.BuildInvocationScopeId;
 import org.gradle.util.GFileUtils;
@@ -62,17 +63,14 @@ public class SkipEmptySourceFilesTaskExecuter implements TaskExecuter {
         TaskProperties taskProperties = context.getTaskProperties();
         FileCollection sourceFiles = taskProperties.getSourceFiles();
         if (taskProperties.hasSourceFiles() && sourceFiles.isEmpty()) {
-            AfterPreviousExecutionState previousExecution = context.getAfterPreviousExecution();
-            @SuppressWarnings("RedundantTypeArguments")
-            ImmutableSortedMap<String, FileCollectionFingerprint> outputFiles = previousExecution == null
-                ? ImmutableSortedMap.<String, FileCollectionFingerprint>of()
-                : previousExecution.getOutputFileProperties();
+            BeforeExecutionState execution = context.getBeforeExecution();
+            ImmutableSortedMap<String, CurrentFileCollectionFingerprint> outputFiles = execution.getOutputFileProperties();
             if (outputFiles.isEmpty()) {
                 state.setOutcome(TaskExecutionOutcome.NO_SOURCE);
                 LOGGER.info("Skipping {} as it has no source files and no previous output files.", task);
             } else {
                 TaskArtifactState taskArtifactState = context.getTaskArtifactState();
-                boolean cleanupDirectories = taskArtifactState.getOverlappingOutputs(context.getAfterPreviousExecution()) == null;
+                boolean cleanupDirectories = taskArtifactState.getOverlappingOutputs(context.getAfterPreviousExecution(), context.getBeforeExecution()) == null;
                 if (!cleanupDirectories) {
                     LOGGER.info("No leftover directories for {} will be deleted since overlapping outputs were detected.", task);
                 }

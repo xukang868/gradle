@@ -30,13 +30,12 @@ import org.gradle.caching.internal.tasks.TaskOutputCachingBuildCacheKey;
 import org.gradle.internal.change.Change;
 import org.gradle.internal.change.ChangeVisitor;
 import org.gradle.internal.execution.history.AfterPreviousExecutionState;
+import org.gradle.internal.execution.history.BeforeExecutionState;
 import org.gradle.internal.execution.history.changes.ExecutionStateChanges;
 import org.gradle.internal.fingerprint.CurrentFileCollectionFingerprint;
-import org.gradle.internal.fingerprint.FileCollectionFingerprint;
 import org.gradle.internal.reflect.Instantiator;
 
 import javax.annotation.Nullable;
-import java.util.Map;
 import java.util.Optional;
 
 public class ShortCircuitTaskArtifactStateRepository implements TaskArtifactStateRepository {
@@ -51,6 +50,7 @@ public class ShortCircuitTaskArtifactStateRepository implements TaskArtifactStat
         this.repository = repository;
     }
 
+    @Override
     public TaskArtifactState getStateFor(final TaskInternal task, TaskProperties taskProperties) {
 
         // Only false if no declared outputs AND no Task.upToDateWhen spec. We force to true for incremental tasks.
@@ -94,7 +94,7 @@ public class ShortCircuitTaskArtifactStateRepository implements TaskArtifactStat
         }
 
         @Override
-        public Optional<ExecutionStateChanges> getExecutionStateChanges(@Nullable AfterPreviousExecutionState afterPreviousExecutionState) {
+        public Optional<ExecutionStateChanges> getExecutionStateChanges(@Nullable AfterPreviousExecutionState afterPreviousExecutionState, BeforeExecutionState beforeExecutionState) {
             return Optional.<ExecutionStateChanges>of(new ExecutionStateChanges() {
                 @Override
                 public void visitAllChanges(ChangeVisitor visitor) {
@@ -119,13 +119,8 @@ public class ShortCircuitTaskArtifactStateRepository implements TaskArtifactStat
         }
 
         @Override
-        public IncrementalTaskInputs getInputChanges(@Nullable AfterPreviousExecutionState afterPreviousExecutionState) {
-            return instantiator.newInstance(RebuildIncrementalTaskInputs.class, task, getCurrentInputFileFingerprints(afterPreviousExecutionState));
-        }
-
-        @Override
-        public Iterable<? extends FileCollectionFingerprint> getCurrentInputFileFingerprints(@Nullable AfterPreviousExecutionState afterPreviousExecutionState) {
-            return delegate.getCurrentInputFileFingerprints(afterPreviousExecutionState);
+        public IncrementalTaskInputs getInputChanges(@Nullable AfterPreviousExecutionState afterPreviousExecutionState, BeforeExecutionState beforeExecutionState) {
+            return instantiator.newInstance(RebuildIncrementalTaskInputs.class, task, beforeExecutionState.getInputFileProperties().values());
         }
 
         @Override
@@ -134,13 +129,8 @@ public class ShortCircuitTaskArtifactStateRepository implements TaskArtifactStat
         }
 
         @Override
-        public TaskOutputCachingBuildCacheKey calculateCacheKey(@Nullable AfterPreviousExecutionState afterPreviousExecutionState, TaskProperties taskProperties) {
-            return delegate.calculateCacheKey(afterPreviousExecutionState, taskProperties);
-        }
-
-        @Override
-        public Map<String, CurrentFileCollectionFingerprint> getOutputFingerprints(@Nullable AfterPreviousExecutionState afterPreviousExecutionState) {
-            return delegate.getOutputFingerprints(afterPreviousExecutionState);
+        public TaskOutputCachingBuildCacheKey calculateCacheKey(BeforeExecutionState beforeExecutionState, TaskProperties taskProperties) {
+            return delegate.calculateCacheKey(beforeExecutionState, taskProperties);
         }
 
         @Override
@@ -154,14 +144,14 @@ public class ShortCircuitTaskArtifactStateRepository implements TaskArtifactStat
         }
 
         @Override
-        public void persistNewOutputs(@Nullable AfterPreviousExecutionState afterPreviousExecutionState, ImmutableSortedMap<String, CurrentFileCollectionFingerprint> newOutputFingerprints, boolean successful, OriginMetadata originMetadata) {
-            delegate.persistNewOutputs(afterPreviousExecutionState, newOutputFingerprints, successful, originMetadata);
+        public void persistNewOutputs(@Nullable AfterPreviousExecutionState afterPreviousExecutionState, BeforeExecutionState beforeExecutionState, ImmutableSortedMap<String, CurrentFileCollectionFingerprint> newOutputFingerprints, boolean successful, OriginMetadata originMetadata) {
+            delegate.persistNewOutputs(afterPreviousExecutionState, beforeExecutionState, newOutputFingerprints, successful, originMetadata);
         }
 
         @Nullable
         @Override
-        public OverlappingOutputs getOverlappingOutputs(@Nullable AfterPreviousExecutionState afterPreviousExecutionState) {
-            return delegate.getOverlappingOutputs(afterPreviousExecutionState);
+        public OverlappingOutputs getOverlappingOutputs(@Nullable AfterPreviousExecutionState afterPreviousExecutionState, BeforeExecutionState beforeExecutionState) {
+            return delegate.getOverlappingOutputs(afterPreviousExecutionState, beforeExecutionState);
         }
     }
 }

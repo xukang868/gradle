@@ -22,6 +22,7 @@ import org.gradle.api.tasks.incremental.IncrementalTaskInputs;
 import org.gradle.caching.internal.tasks.TaskOutputCachingBuildCacheKey;
 import org.gradle.execution.plan.LocalTaskNode;
 import org.gradle.internal.execution.history.AfterPreviousExecutionState;
+import org.gradle.internal.execution.history.BeforeExecutionState;
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -34,6 +35,10 @@ public interface TaskExecutionContext {
     AfterPreviousExecutionState getAfterPreviousExecution();
 
     void setAfterPreviousExecution(@Nullable AfterPreviousExecutionState previousExecution);
+
+    BeforeExecutionState getBeforeExecution();
+
+    void setBeforeExecution(BeforeExecutionState beforeExecution);
 
     TaskArtifactState getTaskArtifactState();
 

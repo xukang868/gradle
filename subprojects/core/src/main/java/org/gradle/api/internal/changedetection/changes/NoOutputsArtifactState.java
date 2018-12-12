@@ -28,14 +28,12 @@ import org.gradle.caching.internal.tasks.TaskOutputCachingBuildCacheKey;
 import org.gradle.internal.change.Change;
 import org.gradle.internal.change.ChangeVisitor;
 import org.gradle.internal.execution.history.AfterPreviousExecutionState;
+import org.gradle.internal.execution.history.BeforeExecutionState;
 import org.gradle.internal.execution.history.changes.ExecutionStateChanges;
 import org.gradle.internal.fingerprint.CurrentFileCollectionFingerprint;
-import org.gradle.internal.fingerprint.FileCollectionFingerprint;
 import org.gradle.util.Path;
 
 import javax.annotation.Nullable;
-import java.util.Collections;
-import java.util.Map;
 import java.util.Optional;
 
 class NoOutputsArtifactState implements TaskArtifactState {
@@ -101,7 +99,7 @@ class NoOutputsArtifactState implements TaskArtifactState {
     }
 
     @Override
-    public Optional<ExecutionStateChanges> getExecutionStateChanges(@Nullable AfterPreviousExecutionState afterPreviousExecutionState) {
+    public Optional<ExecutionStateChanges> getExecutionStateChanges(@Nullable AfterPreviousExecutionState afterPreviousExecutionState, BeforeExecutionState beforeExecutionState) {
         return Optional.<ExecutionStateChanges>of(new ExecutionStateChanges() {
             @Override
             public void visitAllChanges(ChangeVisitor visitor) {
@@ -126,12 +124,7 @@ class NoOutputsArtifactState implements TaskArtifactState {
     }
 
     @Override
-    public IncrementalTaskInputs getInputChanges(@Nullable AfterPreviousExecutionState afterPreviousExecutionState) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Iterable<? extends FileCollectionFingerprint> getCurrentInputFileFingerprints(@Nullable AfterPreviousExecutionState afterPreviousExecutionState) {
+    public IncrementalTaskInputs getInputChanges(@Nullable AfterPreviousExecutionState afterPreviousExecutionState, BeforeExecutionState beforeExecutionState) {
         throw new UnsupportedOperationException();
     }
 
@@ -141,7 +134,7 @@ class NoOutputsArtifactState implements TaskArtifactState {
     }
 
     @Override
-    public TaskOutputCachingBuildCacheKey calculateCacheKey(@Nullable AfterPreviousExecutionState afterPreviousExecutionState, TaskProperties taskProperties) {
+    public TaskOutputCachingBuildCacheKey calculateCacheKey(BeforeExecutionState beforeExecutionState, TaskProperties taskProperties) {
         return NO_CACHE_KEY;
     }
 
@@ -155,16 +148,12 @@ class NoOutputsArtifactState implements TaskArtifactState {
     }
 
     @Override
-    public void persistNewOutputs(@Nullable AfterPreviousExecutionState afterPreviousExecutionState, ImmutableSortedMap<String, CurrentFileCollectionFingerprint> newOutputFingerprints, boolean successful, OriginMetadata originMetadata) {
+    public void persistNewOutputs(@Nullable AfterPreviousExecutionState afterPreviousExecutionState, BeforeExecutionState beforeExecutionState, ImmutableSortedMap<String, CurrentFileCollectionFingerprint> newOutputFingerprints, boolean successful, OriginMetadata originMetadata) {
     }
 
+    @Nullable
     @Override
-    public Map<String, CurrentFileCollectionFingerprint> getOutputFingerprints(@Nullable AfterPreviousExecutionState afterPreviousExecutionState) {
-        return Collections.emptyMap();
-    }
-
-    @Override
-    public OverlappingOutputs getOverlappingOutputs(@Nullable AfterPreviousExecutionState afterPreviousExecutionState) {
+    public OverlappingOutputs getOverlappingOutputs(@Nullable AfterPreviousExecutionState afterPreviousExecutionState, BeforeExecutionState beforeExecutionState) {
         return null;
     }
 

@@ -175,7 +175,7 @@ public class ExecuteActionsTaskExecuter implements TaskExecuter {
 
         @Override
         public Optional<ExecutionStateChanges> getChangesSincePreviousExecution() {
-            return context.getTaskArtifactState().getExecutionStateChanges(context.getAfterPreviousExecution());
+            return context.getTaskArtifactState().getExecutionStateChanges(context.getAfterPreviousExecution(), context.getBeforeExecution());
         }
 
         @Override
@@ -232,7 +232,7 @@ public class ExecuteActionsTaskExecuter implements TaskExecuter {
 
         @Override
         public void persistResult(ImmutableSortedMap<String, CurrentFileCollectionFingerprint> finalOutputs, boolean successful, OriginMetadata originMetadata) {
-            context.getTaskArtifactState().persistNewOutputs(context.getAfterPreviousExecution(), finalOutputs, successful, originMetadata);
+            context.getTaskArtifactState().persistNewOutputs(context.getAfterPreviousExecution(), context.getBeforeExecution(), finalOutputs, successful, originMetadata);
         }
 
         @Override

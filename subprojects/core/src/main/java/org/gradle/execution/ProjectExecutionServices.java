@@ -34,7 +34,7 @@ import org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter;
 import org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter;
 import org.gradle.api.internal.tasks.execution.FinalizePropertiesTaskExecuter;
 import org.gradle.api.internal.tasks.execution.ResolveBuildCacheKeyExecuter;
-import org.gradle.api.internal.tasks.execution.ResolvePreviousStateExecuter;
+import org.gradle.api.internal.tasks.execution.ResolveExecutionStateExecuter;
 import org.gradle.api.internal.tasks.execution.ResolveTaskArtifactStateTaskExecuter;
 import org.gradle.api.internal.tasks.execution.ResolveTaskOutputCachingStateExecuter;
 import org.gradle.api.internal.tasks.execution.SkipEmptySourceFilesTaskExecuter;
@@ -110,6 +110,9 @@ public class ProjectExecutionServices extends DefaultServiceRegistry {
                                     BuildInvocationScopeId buildInvocationScopeId,
                                     TaskExecutionListener taskExecutionListener,
                                     RelativeFilePathResolver relativeFilePathResolver,
+                                    FileCollectionFingerprinterRegistry fingerprinterRegistry,
+                                    ClassLoaderHierarchyHasher classLoaderHierarchyHasher,
+                                    ValueSnapshotter valueSnapshotter,
                                     WorkExecutor<UpToDateResult> workExecutor
     ) {
 
@@ -129,7 +132,7 @@ public class ProjectExecutionServices extends DefaultServiceRegistry {
         }
         executer = new ValidatingTaskExecuter(executer);
         executer = new SkipEmptySourceFilesTaskExecuter(inputsListener, cleanupRegistry, outputChangeListener, executer, buildInvocationScopeId);
-        executer = new ResolvePreviousStateExecuter(executionHistoryStore, executer);
+        executer = new ResolveExecutionStateExecuter(executionHistoryStore, fingerprinterRegistry, classLoaderHierarchyHasher, valueSnapshotter, executer);
         executer = new CleanupStaleOutputsExecuter(cleanupRegistry, outputFilesRepository, buildOperationExecutor, outputChangeListener, executer);
         executer = new FinalizePropertiesTaskExecuter(executer);
         executer = new ResolveTaskArtifactStateTaskExecuter(repository, resolver, propertyWalker, executer);
@@ -167,8 +170,6 @@ public class ProjectExecutionServices extends DefaultServiceRegistry {
         Instantiator instantiator,
         StartParameter startParameter,
         FileCollectionFingerprinterRegistry fingerprinterRegistry,
-        ClassLoaderHierarchyHasher classLoaderHierarchyHasher,
-        ValueSnapshotter valueSnapshotter,
         ExecutionHistoryStore executionHistoryStore,
         OutputFilesRepository taskOutputsRepository
     ) {
@@ -179,8 +180,6 @@ public class ProjectExecutionServices extends DefaultServiceRegistry {
             instantiator,
             new DefaultTaskArtifactStateRepository(
                 fingerprinterRegistry,
-                classLoaderHierarchyHasher,
-                valueSnapshotter,
                 executionHistoryStore,
                 instantiator,
                 taskOutputsRepository,

@@ -27,7 +27,7 @@ import org.gradle.api.internal.tasks.TaskExecutionContext
 import org.gradle.api.internal.tasks.TaskStateInternal
 import org.gradle.caching.internal.tasks.BuildCacheKeyInputs
 import org.gradle.caching.internal.tasks.TaskOutputCachingBuildCacheKey
-import org.gradle.internal.execution.history.AfterPreviousExecutionState
+import org.gradle.internal.execution.history.BeforeExecutionState
 import org.gradle.internal.fingerprint.CurrentFileCollectionFingerprint
 import org.gradle.internal.hash.HashCode
 import org.gradle.internal.operations.TestBuildOperationExecutor
@@ -40,7 +40,7 @@ class ResolveBuildCacheKeyExecuterTest extends Specification {
     def taskState = Mock(TaskStateInternal)
     def task = Mock(TaskInternal)
     def taskContext = Mock(TaskExecutionContext)
-    def afterPreviousExecution = Mock(AfterPreviousExecutionState)
+    def beforeExecution = Mock(BeforeExecutionState)
     def taskArtifactState = Mock(TaskArtifactState)
     def taskProperties = Mock(TaskProperties)
     def delegate = Mock(TaskExecuter)
@@ -61,8 +61,8 @@ class ResolveBuildCacheKeyExecuterTest extends Specification {
         1 * taskContext.getTaskProperties() >> taskProperties
         1 * task.getIdentityPath() >> Path.path(":foo")
         1 * taskContext.getTaskArtifactState() >> taskArtifactState
-        _ * taskContext.afterPreviousExecution >> afterPreviousExecution
-        1 * taskArtifactState.calculateCacheKey(afterPreviousExecution, taskProperties) >> cacheKey
+        _ * taskContext.beforeExecution >> beforeExecution
+        1 * taskArtifactState.calculateCacheKey(beforeExecution, taskProperties) >> cacheKey
 
         then:
         1 * taskProperties.hasDeclaredOutputs() >> true
@@ -87,8 +87,8 @@ class ResolveBuildCacheKeyExecuterTest extends Specification {
         1 * task.getIdentityPath() >> Path.path(":foo")
         1 * taskContext.getTaskArtifactState() >> taskArtifactState
         1 * taskContext.getTaskProperties() >> taskProperties
-        _ * taskContext.afterPreviousExecution >> afterPreviousExecution
-        1 * taskArtifactState.calculateCacheKey(afterPreviousExecution, taskProperties) >> {
+        _ * taskContext.beforeExecution >> beforeExecution
+        1 * taskArtifactState.calculateCacheKey(beforeExecution, taskProperties) >> {
             throw failure
         }
         0 * _
@@ -107,8 +107,8 @@ class ResolveBuildCacheKeyExecuterTest extends Specification {
         1 * task.getIdentityPath() >> Path.path(":foo")
         1 * taskContext.getTaskArtifactState() >> taskArtifactState
         1 * taskContext.getTaskProperties() >> taskProperties
-        _ * taskContext.afterPreviousExecution >> afterPreviousExecution
-        1 * taskArtifactState.calculateCacheKey(afterPreviousExecution, taskProperties) >> noCacheKey
+        _ * taskContext.beforeExecution >> beforeExecution
+        1 * taskArtifactState.calculateCacheKey(beforeExecution, taskProperties) >> noCacheKey
 
         then:
         1 * taskProperties.hasDeclaredOutputs() >> false
