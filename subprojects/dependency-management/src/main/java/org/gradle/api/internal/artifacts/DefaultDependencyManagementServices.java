@@ -15,6 +15,7 @@
  */
 package org.gradle.api.internal.artifacts;
 
+import com.google.common.collect.ImmutableSortedMap;
 import org.gradle.StartParameter;
 import org.gradle.api.Describable;
 import org.gradle.api.artifacts.ConfigurablePublishArtifact;
@@ -26,8 +27,8 @@ import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.artifacts.dsl.DependencyLockingHandler;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
 import org.gradle.api.attributes.AttributesSchema;
-import org.gradle.api.internal.CollectionCallbackActionDecorator;
 import org.gradle.api.file.ProjectLayout;
+import org.gradle.api.internal.CollectionCallbackActionDecorator;
 import org.gradle.api.internal.DocumentationRegistry;
 import org.gradle.api.internal.DomainObjectContext;
 import org.gradle.api.internal.FeaturePreviews;
@@ -90,7 +91,12 @@ import org.gradle.api.internal.filestore.ivy.ArtifactIdentifierFileStore;
 import org.gradle.api.internal.model.NamedObjectInstantiator;
 import org.gradle.api.internal.project.ProjectInternal;
 import org.gradle.api.internal.project.ProjectStateRegistry;
+import org.gradle.api.internal.tasks.PropertySpecFactory;
+import org.gradle.api.internal.tasks.TaskFilePropertySpec;
 import org.gradle.api.internal.tasks.TaskResolver;
+import org.gradle.api.internal.tasks.execution.TaskFingerprinter;
+import org.gradle.api.internal.tasks.properties.PropertyVisitor;
+import org.gradle.api.internal.tasks.properties.PropertyWalker;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.configuration.internal.UserCodeApplicationContext;
 import org.gradle.initialization.ProjectAccessListener;
@@ -121,7 +127,7 @@ import org.gradle.internal.execution.impl.steps.StoreSnapshotsStep;
 import org.gradle.internal.execution.impl.steps.TimeoutStep;
 import org.gradle.internal.execution.impl.steps.UpToDateResult;
 import org.gradle.internal.execution.timeout.TimeoutHandler;
-import org.gradle.internal.fingerprint.impl.AbsolutePathFileCollectionFingerprinter;
+import org.gradle.internal.fingerprint.CurrentFileCollectionFingerprint;
 import org.gradle.internal.fingerprint.impl.OutputFileCollectionFingerprinter;
 import org.gradle.internal.id.UniqueId;
 import org.gradle.internal.isolation.IsolatableFactory;
@@ -146,6 +152,7 @@ import org.gradle.vcs.internal.VcsMappingsStore;
 import javax.annotation.Nullable;
 import java.io.File;
 import java.util.List;
+import java.util.SortedSet;
 
 public class DefaultDependencyManagementServices implements DependencyManagementServices {
 
@@ -227,6 +234,24 @@ public class DefaultDependencyManagementServices implements DependencyManagement
                 )
             );
         }
+
+        TaskFingerprinter createTaskFingerprinter() {
+            return new TaskFingerprinter() {
+                @Override
+                public ImmutableSortedMap<String, CurrentFileCollectionFingerprint> fingerprintTaskFiles(Object owner, SortedSet<? extends TaskFilePropertySpec> fileProperties) {
+                    throw new RuntimeException("Cannot be used");
+                }
+            };
+        }
+
+        PropertyWalker createPropertyWalker() {
+            return new PropertyWalker() {
+                @Override
+                public void visitProperties(PropertySpecFactory specFactory, PropertyVisitor visitor, Object instance) {
+                    throw new RuntimeException("Cannot be used");
+                }
+            };
+        }
     }
 
     private static class DependencyResolutionScopeServices {
@@ -250,25 +275,27 @@ public class DefaultDependencyManagementServices implements DependencyManagement
         }
 
         TransformerInvoker createTransformerInvoker(WorkExecutor<UpToDateResult> workExecutor,
-                                                    FileSystemSnapshotter fileSystemSnapshotter,
                                                     ImmutableCachingTransformationWorkspaceProvider transformationWorkspaceProvider,
                                                     ArtifactTransformListener artifactTransformListener,
                                                     // For now we assume absolute paths when dealing with dependencies
-                                                    AbsolutePathFileCollectionFingerprinter dependencyFingerprinter,
                                                     OutputFileCollectionFingerprinter outputFileCollectionFingerprinter,
                                                     ClassLoaderHierarchyHasher classLoaderHierarchyHasher,
                                                     ProjectFinder projectFinder,
-                                                    FeaturePreviews featurePreviews) {
+                                                    FeaturePreviews featurePreviews,
+                                                    PropertyWalker propertyWalker,
+                                                    TaskFingerprinter taskFingerprinter,
+                                                    FileResolver fileResolver) {
             return new DefaultTransformerInvoker(
                 workExecutor,
-                fileSystemSnapshotter,
                 artifactTransformListener,
                 transformationWorkspaceProvider,
-                dependencyFingerprinter,
                 outputFileCollectionFingerprinter,
                 classLoaderHierarchyHasher,
                 projectFinder,
-                featurePreviews.isFeatureEnabled(FeaturePreviews.Feature.INCREMENTAL_ARTIFACT_TRANSFORMATIONS)
+                featurePreviews.isFeatureEnabled(FeaturePreviews.Feature.INCREMENTAL_ARTIFACT_TRANSFORMATIONS),
+                propertyWalker,
+                taskFingerprinter,
+                fileResolver
             );
         }
 

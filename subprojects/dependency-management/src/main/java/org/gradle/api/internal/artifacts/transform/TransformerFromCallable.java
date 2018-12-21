@@ -16,21 +16,39 @@
 
 package org.gradle.api.internal.artifacts.transform;
 
+import com.google.common.collect.ImmutableSortedMap;
+import org.gradle.api.Action;
 import org.gradle.api.artifacts.transform.ArtifactTransformDependencies;
 import org.gradle.api.internal.attributes.ImmutableAttributes;
+import org.gradle.api.internal.file.FileResolver;
+import org.gradle.api.internal.tasks.DefaultPropertySpecFactory;
+import org.gradle.api.internal.tasks.execution.DefaultTaskProperties;
+import org.gradle.api.internal.tasks.execution.TaskFingerprinter;
+import org.gradle.api.internal.tasks.execution.TaskProperties;
+import org.gradle.api.internal.tasks.properties.PropertyWalker;
+import org.gradle.internal.Cast;
 import org.gradle.internal.UncheckedException;
+import org.gradle.internal.fingerprint.CurrentFileCollectionFingerprint;
 import org.gradle.internal.hash.HashCode;
 import org.gradle.internal.instantiation.InstantiatorFactory;
 import org.gradle.internal.isolation.Isolatable;
 
+import javax.annotation.Nullable;
 import java.io.File;
 import java.util.List;
 import java.util.concurrent.Callable;
 
 public class TransformerFromCallable extends AbstractTransformer<Callable<List<File>>> {
 
-    public TransformerFromCallable(Class<? extends Callable<List<File>>> implementationClass, Isolatable<Object[]> paramsSnapshot, HashCode secondaryInputsHash, InstantiatorFactory instantiatorFactory, ImmutableAttributes from) {
+    private final InstantiatorFactory instantiatorFactory;
+    private final Class<?> configurationType;
+    private final Action<?> configurationAction;
+
+    public TransformerFromCallable(Class<? extends Callable<List<File>>> implementationClass, Isolatable<Object[]> paramsSnapshot, HashCode secondaryInputsHash, InstantiatorFactory instantiatorFactory, ImmutableAttributes from, @Nullable Class<?> configurationType, @Nullable Action<?> configurationAction) {
         super(implementationClass, paramsSnapshot, secondaryInputsHash, instantiatorFactory, from);
+        this.instantiatorFactory = instantiatorFactory;
+        this.configurationType = configurationType;
+        this.configurationAction = configurationAction;
     }
 
     @Override
@@ -43,5 +61,24 @@ public class TransformerFromCallable extends AbstractTransformer<Callable<List<F
         } catch (Exception e) {
             throw UncheckedException.throwAsUncheckedException(e);
         }
+    }
+
+    @Override
+    public ImmutableSortedMap<String, CurrentFileCollectionFingerprint> getInputFileFingerprints(TaskFingerprinter taskFingerprinter, File primaryInput, PropertyWalker propertyWalker, FileResolver pathToFileResolver, Object owner, ArtifactTransformDependencies artifactTransformDependencies) {
+        Callable<List<File>> transformerInstance = newTransformer(primaryInput, null, artifactTransformDependencies);
+
+        TaskProperties properties = DefaultTaskProperties.resolveInputs(propertyWalker, new DefaultPropertySpecFactory(owner, pathToFileResolver), owner.toString(), transformerInstance);
+        return taskFingerprinter.fingerprintTaskFiles(owner, properties.getInputFileProperties());
+    }
+
+    @Nullable
+    @Override
+    protected Object getParameters() {
+        if (configurationType == null) {
+            return null;
+        }
+        Object configuration = instantiatorFactory.inject().newInstance(configurationType);
+        Cast.<Action<Object>>uncheckedNonnullCast(configurationAction).execute(configuration);
+        return configuration;
     }
 }

@@ -72,7 +72,7 @@ public class DefaultVariantTransformRegistry implements VariantTransformRegistry
         // TODO - should calculate this lazily
         Object[] parameters = getTransformParameters(reg.config);
 
-        Registration registration = DefaultTransformationRegistration.create(reg.from.asImmutable(), reg.to.asImmutable(), reg.type, parameters, isolatableFactory, classLoaderHierarchyHasher, instantiatorFactory, transformerInvoker);
+        Registration registration = DefaultTransformationRegistration.create(reg.from.asImmutable(), reg.to.asImmutable(), reg.type, parameters, isolatableFactory, classLoaderHierarchyHasher, instantiatorFactory, transformerInvoker, reg.configurationType, reg.configurationAction);
         transforms.add(registration);
     }
 
@@ -94,6 +94,8 @@ public class DefaultVariantTransformRegistry implements VariantTransformRegistry
         final AttributeContainerInternal to;
         private Class<?> type;
         private Action<? super ActionConfiguration> config;
+        private Class<?> configurationType;
+        private Action<?> configurationAction;
 
         public RecordingRegistration(ImmutableAttributesFactory immutableAttributesFactory) {
             from = immutableAttributesFactory.mutable();
@@ -125,6 +127,14 @@ public class DefaultVariantTransformRegistry implements VariantTransformRegistry
             }
             this.type = type;
             this.config = config;
+        }
+
+        public <T> void configuration(Class<T> type, Action<? super T> configurationAction) {
+            if (this.configurationType != null) {
+                throw new VariantTransformConfigurationException("Could not register transform: only one configuration may be provided for registration.");
+            }
+            this.configurationType = type;
+            this.configurationAction = configurationAction;
         }
     }
 }

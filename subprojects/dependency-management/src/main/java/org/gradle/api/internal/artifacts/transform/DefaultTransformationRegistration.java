@@ -16,6 +16,7 @@
 
 package org.gradle.api.internal.artifacts.transform;
 
+import org.gradle.api.Action;
 import org.gradle.api.artifacts.transform.ArtifactTransform;
 import org.gradle.api.artifacts.transform.VariantTransformConfigurationException;
 import org.gradle.internal.instantiation.InstantiatorFactory;
@@ -30,6 +31,7 @@ import org.gradle.internal.isolation.Isolatable;
 import org.gradle.internal.isolation.IsolatableFactory;
 import org.gradle.model.internal.type.ModelType;
 
+import javax.annotation.Nullable;
 import java.util.Arrays;
 
 public class DefaultTransformationRegistration implements VariantTransformRegistry.Registration {
@@ -38,7 +40,7 @@ public class DefaultTransformationRegistration implements VariantTransformRegist
     private final ImmutableAttributes to;
     private final TransformationStep transformationStep;
 
-    public static VariantTransformRegistry.Registration create(ImmutableAttributes from, ImmutableAttributes to, Class<?> implementation, Object[] params, IsolatableFactory isolatableFactory, ClassLoaderHierarchyHasher classLoaderHierarchyHasher, InstantiatorFactory instantiatorFactory, TransformerInvoker transformerInvoker) {
+    public static VariantTransformRegistry.Registration create(ImmutableAttributes from, ImmutableAttributes to, Class<?> implementation, Object[] params, IsolatableFactory isolatableFactory, ClassLoaderHierarchyHasher classLoaderHierarchyHasher, InstantiatorFactory instantiatorFactory, TransformerInvoker transformerInvoker, @Nullable Class<?> configurationType, @Nullable Action<?> configurationAction) {
         Hasher hasher = Hashing.newHasher();
         hasher.putString(implementation.getName());
         hasher.putHash(classLoaderHierarchyHasher.getClassLoaderHash(implementation.getClassLoader()));
@@ -53,7 +55,7 @@ public class DefaultTransformationRegistration implements VariantTransformRegist
 
         paramsSnapshot.appendToHasher(hasher);
 
-        Transformer transformer = ArtifactTransform.class.isAssignableFrom(implementation) ? new TransformerFromArtifactTransform(Cast.uncheckedNonnullCast(implementation), paramsSnapshot, hasher.hash(), instantiatorFactory, from) : new TransformerFromCallable(Cast.uncheckedNonnullCast(implementation), paramsSnapshot, hasher.hash(), instantiatorFactory, from);
+        Transformer transformer = ArtifactTransform.class.isAssignableFrom(implementation) ? new TransformerFromArtifactTransform(Cast.uncheckedNonnullCast(implementation), paramsSnapshot, hasher.hash(), instantiatorFactory, from) : new TransformerFromCallable(Cast.uncheckedNonnullCast(implementation), paramsSnapshot, hasher.hash(), instantiatorFactory, from, configurationType, configurationAction);
         return new DefaultTransformationRegistration(from, to, new TransformationStep(transformer, transformerInvoker));
     }
 

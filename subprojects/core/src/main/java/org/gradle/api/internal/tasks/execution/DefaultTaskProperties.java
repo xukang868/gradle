@@ -25,6 +25,8 @@ import org.gradle.api.internal.TaskInternal;
 import org.gradle.api.internal.file.CompositeFileCollection;
 import org.gradle.api.internal.file.collections.DefaultConfigurableFileCollection;
 import org.gradle.api.internal.file.collections.FileCollectionResolveContext;
+import org.gradle.api.internal.file.collections.ImmutableFileCollection;
+import org.gradle.api.internal.tasks.PropertySpecFactory;
 import org.gradle.api.internal.tasks.TaskDestroyablePropertySpec;
 import org.gradle.api.internal.tasks.TaskFilePropertySpec;
 import org.gradle.api.internal.tasks.TaskInputFilePropertySpec;
@@ -93,6 +95,27 @@ public class DefaultTaskProperties implements TaskProperties {
             outputFilesVisitor.hasDeclaredOutputs(),
             localStateVisitor.getFiles(),
             destroyablesVisitor.getFiles(),
+            validationVisitor.getTaskPropertySpecs());
+    }
+
+    public static TaskProperties resolveInputs(PropertyWalker propertyWalker, PropertySpecFactory propertySpecFactory, String beanName, Object bean) {
+        GetInputFilesVisitor inputFilesVisitor = new GetInputFilesVisitor();
+        GetInputPropertiesVisitor inputPropertiesVisitor = new GetInputPropertiesVisitor(beanName);
+        ValidationVisitor validationVisitor = new ValidationVisitor();
+        propertyWalker.visitProperties(propertySpecFactory, new CompositePropertyVisitor(
+            inputPropertiesVisitor,
+            inputFilesVisitor,
+            validationVisitor
+        ), bean);
+
+        return new DefaultTaskProperties(
+            beanName,
+            inputPropertiesVisitor.getPropertyValuesFactory(),
+            inputFilesVisitor.getFileProperties(),
+            ImmutableSortedSet.<TaskOutputFilePropertySpec>of(),
+            true,
+            ImmutableFileCollection.of(),
+            ImmutableFileCollection.of(),
             validationVisitor.getTaskPropertySpecs());
     }
 

@@ -88,9 +88,12 @@ public abstract class AbstractTransformer<T> implements Transformer {
     }
 
     protected T newTransformer(File inputFile, File outputDir, ArtifactTransformDependencies artifactTransformDependencies) {
-        ServiceLookup services = new TransformServiceLookup(inputFile, outputDir, requiresDependencies ? artifactTransformDependencies : null);
+        ServiceLookup services = new TransformServiceLookup(inputFile, outputDir, requiresDependencies ? artifactTransformDependencies : null, getParameters());
         return instanceFactory.newInstance(services, parameters.isolate());
     }
+
+    @Nullable
+    protected abstract Object getParameters();
 
     @Override
     public HashCode getSecondaryInputHash() {
@@ -126,15 +129,17 @@ public abstract class AbstractTransformer<T> implements Transformer {
         return inputsHash.hashCode();
     }
 
-    private static class TransformServiceLookup implements ServiceLookup {
+    private static class TransformServiceLookup<T> implements ServiceLookup {
         private final File inputFile;
         private final File outputDir;
         private final ArtifactTransformDependencies artifactTransformDependencies;
+        private final Object parameters;
 
-        public TransformServiceLookup(File inputFile, File outputDir, @Nullable ArtifactTransformDependencies artifactTransformDependencies) {
+        public TransformServiceLookup(File inputFile, File outputDir, @Nullable ArtifactTransformDependencies artifactTransformDependencies, @Nullable Object parameters) {
             this.inputFile = inputFile;
             this.outputDir = outputDir;
             this.artifactTransformDependencies = artifactTransformDependencies;
+            this.parameters = parameters;
         }
 
         @Nullable
@@ -152,6 +157,9 @@ public abstract class AbstractTransformer<T> implements Transformer {
             }
             if (annotatedWith == null && artifactTransformDependencies != null && serviceClass.isAssignableFrom(ArtifactTransformDependencies.class)) {
                 return artifactTransformDependencies;
+            }
+            if (annotatedWith == null && parameters != null && serviceClass.isAssignableFrom(parameters.getClass())) {
+                return parameters;
             }
             return null;
         }
