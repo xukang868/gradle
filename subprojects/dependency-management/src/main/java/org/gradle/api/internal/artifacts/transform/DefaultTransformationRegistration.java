@@ -18,21 +18,24 @@ package org.gradle.api.internal.artifacts.transform;
 
 import org.gradle.api.Action;
 import org.gradle.api.artifacts.transform.ArtifactTransform;
+import org.gradle.api.artifacts.transform.TransformAction;
 import org.gradle.api.artifacts.transform.VariantTransformConfigurationException;
-import org.gradle.internal.instantiation.InstantiatorFactory;
 import org.gradle.api.internal.artifacts.VariantTransformRegistry;
 import org.gradle.api.internal.attributes.AttributeContainerInternal;
 import org.gradle.api.internal.attributes.ImmutableAttributes;
-import org.gradle.internal.Cast;
 import org.gradle.internal.classloader.ClassLoaderHierarchyHasher;
 import org.gradle.internal.hash.Hasher;
 import org.gradle.internal.hash.Hashing;
+import org.gradle.internal.instantiation.InstantiatorFactory;
 import org.gradle.internal.isolation.Isolatable;
 import org.gradle.internal.isolation.IsolatableFactory;
 import org.gradle.model.internal.type.ModelType;
 
 import javax.annotation.Nullable;
+import java.io.File;
 import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.Callable;
 
 public class DefaultTransformationRegistration implements VariantTransformRegistry.Registration {
 
@@ -40,7 +43,7 @@ public class DefaultTransformationRegistration implements VariantTransformRegist
     private final ImmutableAttributes to;
     private final TransformationStep transformationStep;
 
-    public static VariantTransformRegistry.Registration create(ImmutableAttributes from, ImmutableAttributes to, Class<?> implementation, Object[] params, IsolatableFactory isolatableFactory, ClassLoaderHierarchyHasher classLoaderHierarchyHasher, InstantiatorFactory instantiatorFactory, TransformerInvoker transformerInvoker, @Nullable Class<?> configurationType, @Nullable Action<?> configurationAction) {
+    public static VariantTransformRegistry.Registration create(ImmutableAttributes from, ImmutableAttributes to, Class<? extends ArtifactTransform> implementation, Object[] params, IsolatableFactory isolatableFactory, ClassLoaderHierarchyHasher classLoaderHierarchyHasher, InstantiatorFactory instantiatorFactory, TransformerInvoker transformerInvoker) {
         Hasher hasher = Hashing.newHasher();
         hasher.putString(implementation.getName());
         hasher.putHash(classLoaderHierarchyHasher.getClassLoaderHash(implementation.getClassLoader()));
@@ -55,7 +58,7 @@ public class DefaultTransformationRegistration implements VariantTransformRegist
 
         paramsSnapshot.appendToHasher(hasher);
 
-        Transformer transformer = ArtifactTransform.class.isAssignableFrom(implementation) ? new TransformerFromArtifactTransform(Cast.uncheckedNonnullCast(implementation), paramsSnapshot, hasher.hash(), instantiatorFactory, from) : new TransformerFromCallable(Cast.uncheckedNonnullCast(implementation), paramsSnapshot, hasher.hash(), instantiatorFactory, from, configurationType, configurationAction);
+        Transformer transformer = new TransformerFromArtifactTransform(implementation, paramsSnapshot, hasher.hash(), instantiatorFactory, from);
         return new DefaultTransformationRegistration(from, to, new TransformationStep(transformer, transformerInvoker));
     }
 
@@ -63,6 +66,20 @@ public class DefaultTransformationRegistration implements VariantTransformRegist
         this.from = from;
         this.to = to;
         this.transformationStep = transformationStep;
+    }
+
+    public static <T> VariantTransformRegistry.Registration create(ImmutableAttributes from, ImmutableAttributes to, Class<T> parameterType, ClassLoaderHierarchyHasher classLoaderHierarchyHasher, InstantiatorFactory instantiatorFactory, TransformerInvoker transformerInvoker, @Nullable Action<? super T> configurationAction) {
+        Hasher hasher = Hashing.newHasher();
+        TransformAction transformAction = parameterType.getAnnotation(TransformAction.class);
+        if (transformAction == null) {
+            throw new VariantTransformConfigurationException("Could not register transform: the configuration type must be annotated with @TransformAction.");
+        }
+        Class<? extends Callable<List<File>>> actionType = transformAction.value();
+        hasher.putString(actionType.getName());
+        hasher.putHash(classLoaderHierarchyHasher.getClassLoaderHash(actionType.getClassLoader()));
+
+        Transformer transformer = new TransformerFromCallable(from, actionType, parameterType, hasher.hash(), configurationAction, instantiatorFactory);
+        return new DefaultTransformationRegistration(from, to, new TransformationStep(transformer, transformerInvoker));
     }
 
     @Override

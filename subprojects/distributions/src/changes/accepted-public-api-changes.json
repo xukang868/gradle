@@ -1,16 +1,34 @@
 {
-   "acceptedApiChanges": [
-      {
-         "type": "org.gradle.api.publish.maven.tasks.GenerateMavenPom",
-         "member": "Method org.gradle.api.publish.maven.tasks.GenerateMavenPom.withCompileScopeAttributes(org.gradle.api.internal.attributes.ImmutableAttributes)",
-         "acceptation": "Internal method used for attribute set injection",
-         "changes": []
-      },
-      {
-         "type": "org.gradle.api.publish.maven.tasks.GenerateMavenPom",
-         "member": "Method org.gradle.api.publish.maven.tasks.GenerateMavenPom.withRuntimeScopeAttributes(org.gradle.api.internal.attributes.ImmutableAttributes)",
-         "acceptation": "Internal method used for attribute set injection",
-         "changes": []
-      }
-   ]
+    "acceptedApiChanges": [
+        {
+            "type": "org.gradle.api.publish.maven.tasks.GenerateMavenPom",
+            "member": "Method org.gradle.api.publish.maven.tasks.GenerateMavenPom.withCompileScopeAttributes(org.gradle.api.internal.attributes.ImmutableAttributes)",
+            "acceptation": "Internal method used for attribute set injection",
+            "changes": []
+        },
+        {
+            "type": "org.gradle.api.publish.maven.tasks.GenerateMavenPom",
+            "member": "Method org.gradle.api.publish.maven.tasks.GenerateMavenPom.withRuntimeScopeAttributes(org.gradle.api.internal.attributes.ImmutableAttributes)",
+            "acceptation": "Internal method used for attribute set injection",
+            "changes": []
+        },
+        {
+            "type": "org.gradle.api.artifacts.transform.ArtifactTransformRegistration",
+            "member": "Class org.gradle.api.artifacts.transform.ArtifactTransformRegistration",
+            "acceptation": "Existing methods extracted to super interface",
+            "changes": []
+        },
+        {
+            "type": "org.gradle.api.artifacts.transform.ArtifactTransformRegistration",
+            "member": "Method org.gradle.api.artifacts.transform.ArtifactTransformRegistration.getFrom()",
+            "acceptation": "Methods exist on base interface",
+            "changes": []
+        },
+        {
+            "type": "org.gradle.api.artifacts.transform.ArtifactTransformRegistration",
+            "member": "Method org.gradle.api.artifacts.transform.ArtifactTransformRegistration.getTo()",
+            "acceptation": "Methods exist on base interface",
+            "changes": []
+        }
+    ]
 }

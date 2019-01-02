@@ -27,6 +27,7 @@ import org.gradle.api.artifacts.dsl.ComponentModuleMetadataHandler;
 import org.gradle.api.artifacts.dsl.DependencyConstraintHandler;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.artifacts.query.ArtifactResolutionQuery;
+import org.gradle.api.artifacts.transform.ParameterizedArtifactTransformRegistration;
 import org.gradle.api.artifacts.transform.VariantTransform;
 import org.gradle.api.artifacts.type.ArtifactTypeContainer;
 import org.gradle.api.attributes.AttributesSchema;
@@ -210,6 +211,12 @@ public class DefaultDependencyHandler implements DependencyHandler, MethodMixIn 
     public void registerTransform(Action<? super VariantTransform> registrationAction) {
         transforms.registerTransform(registrationAction);
     }
+
+    @Override
+    public <T> void registerTransform(Class<T> parameterType, Action<? super ParameterizedArtifactTransformRegistration<T>> registrationAction) {
+        transforms.registerTransform(parameterType, registrationAction);
+    }
+
 
     @Override
     public Dependency platform(Object notation) {

@@ -31,7 +31,7 @@ import org.gradle.internal.UncheckedException;
 import org.gradle.internal.fingerprint.CurrentFileCollectionFingerprint;
 import org.gradle.internal.hash.HashCode;
 import org.gradle.internal.instantiation.InstantiatorFactory;
-import org.gradle.internal.isolation.Isolatable;
+import org.gradle.internal.snapshot.impl.ArrayValueSnapshot;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -41,14 +41,14 @@ import java.util.concurrent.Callable;
 public class TransformerFromCallable extends AbstractTransformer<Callable<List<File>>> {
 
     private final InstantiatorFactory instantiatorFactory;
-    private final Class<?> configurationType;
+    private final Class<?> parameterType;
     private final Action<?> configurationAction;
 
-    public TransformerFromCallable(Class<? extends Callable<List<File>>> implementationClass, Isolatable<Object[]> paramsSnapshot, HashCode secondaryInputsHash, InstantiatorFactory instantiatorFactory, ImmutableAttributes from, @Nullable Class<?> configurationType, @Nullable Action<?> configurationAction) {
-        super(implementationClass, paramsSnapshot, secondaryInputsHash, instantiatorFactory, from);
+    public TransformerFromCallable(ImmutableAttributes from, Class<? extends Callable<List<File>>> actionType, Class<?> parameterType, HashCode implementationHash, @Nullable Action<?> parameterConfigurationAction, InstantiatorFactory instantiatorFactory) {
+        super(actionType, ArrayValueSnapshot.EMPTY, implementationHash, instantiatorFactory, from);
         this.instantiatorFactory = instantiatorFactory;
-        this.configurationType = configurationType;
-        this.configurationAction = configurationAction;
+        this.parameterType = parameterType;
+        this.configurationAction = parameterConfigurationAction;
     }
 
     @Override
@@ -71,14 +71,12 @@ public class TransformerFromCallable extends AbstractTransformer<Callable<List<F
         return taskFingerprinter.fingerprintTaskFiles(owner, properties.getInputFileProperties());
     }
 
-    @Nullable
     @Override
     protected Object getParameters() {
-        if (configurationType == null) {
-            return null;
+        Object configuration = instantiatorFactory.inject().newInstance(parameterType);
+        if (configurationAction != null) {
+            Cast.<Action<Object>>uncheckedNonnullCast(configurationAction).execute(configuration);
         }
-        Object configuration = instantiatorFactory.inject().newInstance(configurationType);
-        Cast.<Action<Object>>uncheckedNonnullCast(configurationAction).execute(configuration);
         return configuration;
     }
 }

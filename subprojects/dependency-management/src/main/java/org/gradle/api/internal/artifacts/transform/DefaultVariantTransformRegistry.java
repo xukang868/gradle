@@ -20,20 +20,22 @@ import com.google.common.collect.Lists;
 import org.gradle.api.Action;
 import org.gradle.api.ActionConfiguration;
 import org.gradle.api.artifacts.transform.ArtifactTransform;
+import org.gradle.api.artifacts.transform.ArtifactTransformRegistration;
+import org.gradle.api.artifacts.transform.ParameterizedArtifactTransformRegistration;
 import org.gradle.api.artifacts.transform.VariantTransform;
 import org.gradle.api.artifacts.transform.VariantTransformConfigurationException;
 import org.gradle.api.attributes.AttributeContainer;
 import org.gradle.api.internal.DefaultActionConfiguration;
-import org.gradle.internal.instantiation.InstantiatorFactory;
 import org.gradle.api.internal.artifacts.VariantTransformRegistry;
 import org.gradle.api.internal.attributes.AttributeContainerInternal;
 import org.gradle.api.internal.attributes.ImmutableAttributesFactory;
+import org.gradle.internal.Cast;
 import org.gradle.internal.classloader.ClassLoaderHierarchyHasher;
+import org.gradle.internal.instantiation.InstantiatorFactory;
 import org.gradle.internal.isolation.IsolatableFactory;
 
 import javax.annotation.Nullable;
 import java.util.List;
-import java.util.concurrent.Callable;
 
 public class DefaultVariantTransformRegistry implements VariantTransformRegistry {
     private static final Object[] NO_PARAMETERS = new Object[0];
@@ -59,21 +61,34 @@ public class DefaultVariantTransformRegistry implements VariantTransformRegistry
         if (reg.type == null) {
             throw new VariantTransformConfigurationException("Could not register transform: a transformer must be provided.");
         }
-        if (reg.to.isEmpty()) {
-            throw new VariantTransformConfigurationException("Could not register transform: at least one 'to' attribute must be provided.");
-        }
-        if (reg.from.isEmpty()) {
-            throw new VariantTransformConfigurationException("Could not register transform: at least one 'from' attribute must be provided.");
-        }
-        if (!reg.from.keySet().containsAll(reg.to.keySet())) {
-            throw new VariantTransformConfigurationException("Could not register transform: each 'to' attribute must be included as a 'from' attribute.");
-        }
+        verifyAttributes(reg);
 
         // TODO - should calculate this lazily
         Object[] parameters = getTransformParameters(reg.config);
 
-        Registration registration = DefaultTransformationRegistration.create(reg.from.asImmutable(), reg.to.asImmutable(), reg.type, parameters, isolatableFactory, classLoaderHierarchyHasher, instantiatorFactory, transformerInvoker, reg.configurationType, reg.configurationAction);
+        Registration registration = DefaultTransformationRegistration.create(reg.from.asImmutable(), reg.to.asImmutable(), reg.type, parameters, isolatableFactory, classLoaderHierarchyHasher, instantiatorFactory, transformerInvoker);
         transforms.add(registration);
+    }
+
+    @Override
+    public <T> void registerTransform(Class<T> parameterType, Action<? super ParameterizedArtifactTransformRegistration<T>> registrationAction) {
+        ParameterizedRecordingRegistration<T> reg = Cast.uncheckedNonnullCast(instantiatorFactory.decorateLenient().newInstance(ParameterizedRecordingRegistration.class, immutableAttributesFactory));
+        registrationAction.execute(reg);
+        verifyAttributes(reg);
+        Registration registration = DefaultTransformationRegistration.create(reg.from.asImmutable(), reg.to.asImmutable(), parameterType, classLoaderHierarchyHasher, instantiatorFactory, transformerInvoker, reg.configurationAction);
+        transforms.add(registration);
+    }
+
+    private void verifyAttributes(ArtifactTransformRegistration reg) {
+        if (reg.getTo().isEmpty()) {
+            throw new VariantTransformConfigurationException("Could not register transform: at least one 'to' attribute must be provided.");
+        }
+        if (reg.getFrom().isEmpty()) {
+            throw new VariantTransformConfigurationException("Could not register transform: at least one 'from' attribute must be provided.");
+        }
+        if (!reg.getFrom().keySet().containsAll(reg.getTo().keySet())) {
+            throw new VariantTransformConfigurationException("Could not register transform: each 'to' attribute must be included as a 'from' attribute.");
+        }
     }
 
     public Iterable<Registration> getTransforms() {
@@ -89,17 +104,13 @@ public class DefaultVariantTransformRegistry implements VariantTransformRegistry
         return config.getParams();
     }
 
-    public static class RecordingRegistration implements VariantTransform {
+    public abstract static class AbstractRecordingRegistration implements ArtifactTransformRegistration {
         final AttributeContainerInternal from;
         final AttributeContainerInternal to;
-        private Class<?> type;
-        private Action<? super ActionConfiguration> config;
-        private Class<?> configurationType;
-        private Action<?> configurationAction;
 
-        public RecordingRegistration(ImmutableAttributesFactory immutableAttributesFactory) {
-            from = immutableAttributesFactory.mutable();
-            to = immutableAttributesFactory.mutable();
+        public AbstractRecordingRegistration(ImmutableAttributesFactory immutableAttributesFactory) {
+            this.from = immutableAttributesFactory.mutable();
+            this.to = immutableAttributesFactory.mutable();
         }
 
         @Override
@@ -111,29 +122,43 @@ public class DefaultVariantTransformRegistry implements VariantTransformRegistry
         public AttributeContainer getTo() {
             return to;
         }
+    }
+
+    public static class RecordingRegistration extends AbstractRecordingRegistration implements VariantTransform {
+        private Class<? extends ArtifactTransform> type;
+        private Action<? super ActionConfiguration> config;
+
+        public RecordingRegistration(ImmutableAttributesFactory immutableAttributesFactory) {
+            super(immutableAttributesFactory);
+        }
 
         @Override
-        public void artifactTransform(Class<?> type) {
+        public void artifactTransform(Class<? extends ArtifactTransform> type) {
             artifactTransform(type, null);
         }
 
         @Override
-        public void artifactTransform(Class<?> type, @Nullable Action<? super ActionConfiguration> config) {
+        public void artifactTransform(Class<? extends ArtifactTransform> type, @Nullable Action<? super ActionConfiguration> config) {
             if (this.type != null) {
                 throw new VariantTransformConfigurationException("Could not register transform: only one ArtifactTransform may be provided for registration.");
             }
-            if (!ArtifactTransform.class.isAssignableFrom(type) && !Callable.class.isAssignableFrom(type)) {
-                throw new VariantTransformConfigurationException("Only Callable or ArtifactTransform can be registered as artifact transformations.");
+            if (!ArtifactTransform.class.isAssignableFrom(type)) {
+                throw new VariantTransformConfigurationException("Only ArtifactTransform can be registered as artifact transformations.");
             }
             this.type = type;
             this.config = config;
         }
+    }
 
-        public <T> void configuration(Class<T> type, Action<? super T> configurationAction) {
-            if (this.configurationType != null) {
-                throw new VariantTransformConfigurationException("Could not register transform: only one configuration may be provided for registration.");
-            }
-            this.configurationType = type;
+    public static class ParameterizedRecordingRegistration<T> extends AbstractRecordingRegistration implements ParameterizedArtifactTransformRegistration<T> {
+        Action<? super T> configurationAction;
+
+        public ParameterizedRecordingRegistration(ImmutableAttributesFactory immutableAttributesFactory) {
+            super(immutableAttributesFactory);
+        }
+
+        @Override
+        public void parameters(Action<? super T> configurationAction) {
             this.configurationAction = configurationAction;
         }
     }

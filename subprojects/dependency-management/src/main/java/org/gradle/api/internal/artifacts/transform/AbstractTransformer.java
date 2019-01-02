@@ -40,12 +40,12 @@ public abstract class AbstractTransformer<T> implements Transformer {
 
     private final Class<? extends T> implementationClass;
     private final boolean requiresDependencies;
-    private final Isolatable<Object[]> parameters;
+    private final Isolatable<? extends Object[]> parameters;
     private final InstanceFactory<? extends T> instanceFactory;
     private final HashCode inputsHash;
     private final ImmutableAttributes fromAttributes;
 
-    public AbstractTransformer(Class<? extends T> implementationClass, Isolatable<Object[]> parameters, HashCode inputsHash, InstantiatorFactory instantiatorFactory, ImmutableAttributes fromAttributes) {
+    public AbstractTransformer(Class<? extends T> implementationClass, Isolatable<? extends Object[]> parameters, HashCode inputsHash, InstantiatorFactory instantiatorFactory, ImmutableAttributes fromAttributes) {
         this.implementationClass = implementationClass;
         this.instanceFactory = instantiatorFactory.injectScheme(ImmutableSet.of(Workspace.class, PrimaryInput.class)).forType(implementationClass);
         this.requiresDependencies = instanceFactory.requiresService(ArtifactTransformDependencies.class);
@@ -87,7 +87,7 @@ public abstract class AbstractTransformer<T> implements Transformer {
         return outputs;
     }
 
-    protected T newTransformer(File inputFile, File outputDir, ArtifactTransformDependencies artifactTransformDependencies) {
+    protected T newTransformer(File inputFile, @Nullable File outputDir, ArtifactTransformDependencies artifactTransformDependencies) {
         ServiceLookup services = new TransformServiceLookup(inputFile, outputDir, requiresDependencies ? artifactTransformDependencies : null, getParameters());
         return instanceFactory.newInstance(services, parameters.isolate());
     }
@@ -135,7 +135,7 @@ public abstract class AbstractTransformer<T> implements Transformer {
         private final ArtifactTransformDependencies artifactTransformDependencies;
         private final Object parameters;
 
-        public TransformServiceLookup(File inputFile, File outputDir, @Nullable ArtifactTransformDependencies artifactTransformDependencies, @Nullable Object parameters) {
+        public TransformServiceLookup(File inputFile, @Nullable File outputDir, @Nullable ArtifactTransformDependencies artifactTransformDependencies, @Nullable Object parameters) {
             this.inputFile = inputFile;
             this.outputDir = outputDir;
             this.artifactTransformDependencies = artifactTransformDependencies;
