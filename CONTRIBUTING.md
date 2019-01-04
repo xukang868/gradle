@@ -49,6 +49,7 @@ Gradle uses pull requests for contributions. Fork [gradle/gradle](https://github
 
 ### IntelliJ
 
+
 You can generate the IntelliJ projects by importing it using the import wizard. You must use IntelliJ 2018.3 or newer.
 
 
