@@ -27,7 +27,6 @@ import com.google.common.io.Files;
 import org.gradle.api.GradleException;
 import org.gradle.api.Incubating;
 import org.gradle.api.InvalidUserDataException;
-import org.gradle.api.Task;
 import org.gradle.api.UncheckedIOException;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.EmptyFileVisitor;
@@ -37,6 +36,9 @@ import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.internal.ConventionTask;
 import org.gradle.api.internal.DocumentationRegistry;
+import org.gradle.api.internal.tasks.properties.PropertyValidationAccess;
+import org.gradle.api.internal.tasks.properties.PropertyValidator;
+import org.gradle.api.internal.tasks.properties.TypeValidator;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.Classpath;
@@ -50,12 +52,15 @@ import org.gradle.api.tasks.SkipWhenEmpty;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.TaskValidationException;
 import org.gradle.api.tasks.VerificationTask;
-import org.gradle.internal.Cast;
+import org.gradle.internal.UncheckedException;
 import org.gradle.internal.classanalysis.AsmConstants;
 import org.gradle.internal.classloader.ClassLoaderFactory;
 import org.gradle.internal.classloader.ClassLoaderUtils;
+import org.gradle.internal.classloader.FilteringClassLoader;
+import org.gradle.internal.classloader.VisitableURLClassLoader;
 import org.gradle.internal.classpath.ClassPath;
 import org.gradle.internal.classpath.DefaultClassPath;
+import org.gradle.internal.reflect.PropertyMetadata;
 import org.gradle.util.DeprecationLogger;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -64,8 +69,8 @@ import org.objectweb.asm.Opcodes;
 import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.List;
@@ -130,7 +135,18 @@ public class ValidateTaskProperties extends ConventionTask implements Verificati
     public void validateTaskClasses() throws IOException {
         ClassLoader previousContextClassLoader = Thread.currentThread().getContextClassLoader();
         ClassPath classPath = DefaultClassPath.of(Iterables.concat(getClasses(), getClasspath()));
-        ClassLoader classLoader = getClassLoaderFactory().createIsolatedClassLoader("task-loader", classPath);
+        FilteringClassLoader.Spec spec = new FilteringClassLoader.Spec();
+        spec.allowClass(TypeValidator.class);
+        spec.allowClass(PropertyValidator.class);
+        spec.allowClass(PropertyMetadata.class);
+        // TODO - query the validators for this
+        for (Class<? extends Annotation> annotation : PropertyValidationAccess.PROPERTY_VALIDATORS.keySet()) {
+            spec.allowClass(annotation);
+        }
+        spec.allowClass(FileCollection.class);
+        spec.allowClass(PathSensitive.class);
+        ClassLoader shared = getClassLoaderFactory().createFilteringClassLoader(getClass().getClassLoader(), spec);
+        ClassLoader classLoader = new VisitableURLClassLoader("task-loader", shared, classPath.getAsURLs());
         Thread.currentThread().setContextClassLoader(classLoader);
         try {
             validateTaskClasses(classLoader);
@@ -142,16 +158,14 @@ public class ValidateTaskProperties extends ConventionTask implements Verificati
 
     private void validateTaskClasses(final ClassLoader classLoader) throws IOException {
         final Map<String, Boolean> taskValidationProblems = Maps.newTreeMap();
-        final Class<?> taskInterface;
-        final Method validatorMethod;
+        final TypeValidator validator;
         try {
-            taskInterface = classLoader.loadClass(Task.class.getName());
-            Class<?> validatorClass = classLoader.loadClass("org.gradle.api.internal.tasks.properties.PropertyValidationAccess");
-            validatorMethod = validatorClass.getMethod("collectTaskValidationProblems", Class.class, Map.class, Boolean.TYPE);
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
-        } catch (NoSuchMethodException e) {
-            throw new RuntimeException(e);
+            Class<?> validatorClass = classLoader.loadClass(PropertyValidationAccess.class.getName());
+            validator = (TypeValidator) validatorClass.getDeclaredConstructor(Map.class, Boolean.TYPE).newInstance(PropertyValidationAccess.PROPERTY_VALIDATORS, enableStricterValidation);
+        } catch (InvocationTargetException e) {
+            throw UncheckedException.throwAsUncheckedException(e.getCause());
+        } catch (Exception e) {
+            throw UncheckedException.throwAsUncheckedException(e);
         }
 
         getClasses().getAsFileTree().visit(new EmptyFileVisitor() {
@@ -185,17 +199,7 @@ public class ValidateTaskProperties extends ConventionTask implements Verificati
                     if (Modifier.isAbstract(clazz.getModifiers())) {
                         continue;
                     }
-                    if (!taskInterface.isAssignableFrom(clazz)) {
-                        continue;
-                    }
-                    Class<? extends Task> taskClass = Cast.uncheckedCast(clazz);
-                    try {
-                        validatorMethod.invoke(null, taskClass, taskValidationProblems, enableStricterValidation);
-                    } catch (IllegalAccessException e) {
-                        throw new RuntimeException(e);
-                    } catch (InvocationTargetException e) {
-                        throw new RuntimeException(e);
-                    }
+                    validator.collectTaskValidationProblems(clazz, taskValidationProblems);
                 }
             }
         });
@@ -342,7 +346,7 @@ public class ValidateTaskProperties extends ConventionTask implements Verificati
 
     /**
      * Enable the stricter validation for cacheable tasks for all tasks.
-     * 
+     *
      * @since 5.1
      */
     @Incubating

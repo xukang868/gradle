@@ -53,21 +53,39 @@ import java.util.Queue;
  * Class for easy access to task property validation from the validator task.
  */
 @NonNullApi
-public class PropertyValidationAccess {
-    private final static Map<Class<? extends Annotation>, PropertyValidator> PROPERTY_VALIDATORS = ImmutableMap.of(
+public class PropertyValidationAccess implements TypeValidator {
+    public final static Map<Class<? extends Annotation>, PropertyValidator> PROPERTY_VALIDATORS = ImmutableMap.of(
         Input.class, new InputOnFileTypeValidator(),
         InputFiles.class, new MissingPathSensitivityValidator(),
         InputFile.class, new MissingPathSensitivityValidator(),
         InputDirectory.class, new MissingPathSensitivityValidator()
     );
+    private final Map<Class<? extends Annotation>, PropertyValidator> validators;
+    private final boolean enableStricterValidation;
+    private final DefaultTaskClassInfoStore taskClassInfoStore;
+    private final TypeMetadataStore metadataStore;
 
+    public PropertyValidationAccess(Map<Class<? extends Annotation>, PropertyValidator> validators, boolean enableStricterValidation) {
+        this.validators = validators;
+        this.enableStricterValidation = enableStricterValidation;
+        DefaultCrossBuildInMemoryCacheFactory cacheFactory = new DefaultCrossBuildInMemoryCacheFactory(new DefaultListenerManager());
+        taskClassInfoStore = new DefaultTaskClassInfoStore(cacheFactory);
+        metadataStore = new DefaultTypeMetadataStore(ImmutableList.of(new ClasspathPropertyAnnotationHandler(), new CompileClasspathPropertyAnnotationHandler()
+        ), cacheFactory);
+    }
+
+    // Used by the gradle/gradle build. Remove once updated to new snapshot
     @SuppressWarnings("unused")
     public static void collectTaskValidationProblems(Class<?> topLevelBean, Map<String, Boolean> problems, boolean enableStricterValidation) {
-        DefaultCrossBuildInMemoryCacheFactory cacheFactory = new DefaultCrossBuildInMemoryCacheFactory(new DefaultListenerManager());
-        DefaultTaskClassInfoStore taskClassInfoStore = new DefaultTaskClassInfoStore(cacheFactory);
-        TypeMetadataStore metadataStore = new DefaultTypeMetadataStore(ImmutableList.of(
-            new ClasspathPropertyAnnotationHandler(), new CompileClasspathPropertyAnnotationHandler()
-        ), cacheFactory);
+        new PropertyValidationAccess(PROPERTY_VALIDATORS, enableStricterValidation).collectTaskValidationProblems(topLevelBean, problems);
+    }
+
+    @SuppressWarnings("unused")
+    public void collectTaskValidationProblems(Class<?> topLevelBean, Map<String, Boolean> problems) {
+        if (!Task.class.isAssignableFrom(topLevelBean)) {
+            return;
+        }
+
         Queue<BeanTypeNode<?>> queue = new ArrayDeque<BeanTypeNode<?>>();
         BeanTypeNodeFactory nodeFactory = new BeanTypeNodeFactory(metadataStore);
         queue.add(nodeFactory.createRootNode(TypeToken.of(topLevelBean)));
@@ -80,7 +98,7 @@ public class PropertyValidationAccess {
         }
     }
 
-    private static class BeanTypeNodeFactory {
+    private class BeanTypeNodeFactory {
         private final TypeMetadataStore metadataStore;
 
         public BeanTypeNodeFactory(TypeMetadataStore metadataStore) {
@@ -124,6 +142,7 @@ public class PropertyValidationAccess {
         public boolean nodeCreatesCycle(TypeToken<?> childType) {
             return findNodeCreatingCycle(childType, Equivalence.equals()) != null;
         }
+
         private final TypeToken<? extends T> beanType;
 
         protected TypeToken<?> extractNestedType(Class<? super T> parameterizedSuperClass, int typeParameterIndex) {
@@ -136,7 +155,7 @@ public class PropertyValidationAccess {
         }
     }
 
-    private static class NestedBeanTypeNode extends BeanTypeNode<Object> {
+    private class NestedBeanTypeNode extends BeanTypeNode<Object> {
 
         public NestedBeanTypeNode(@Nullable BeanTypeNode<?> parentNode, @Nullable String parentPropertyName, TypeToken<?> beanType, TypeMetadata typeMetadata) {
             super(parentNode, parentPropertyName, beanType, typeMetadata);
@@ -156,7 +175,7 @@ public class PropertyValidationAccess {
                     }
                     continue;
                 }
-                PropertyValidator validator = PROPERTY_VALIDATORS.get(propertyType);
+                PropertyValidator validator = validators.get(propertyType);
                 if (validator != null) {
                     String validationMessage = validator.validate(stricterValidation, propertyMetadata);
                     if (validationMessage != null) {
@@ -170,16 +189,16 @@ public class PropertyValidationAccess {
             }
         }
 
-        private static TypeToken<?> unpackProvider(Method method) {
+        private TypeToken<?> unpackProvider(Method method) {
             Class<?> rawType = method.getReturnType();
             TypeToken<?> genericReturnType = TypeToken.of(method.getGenericReturnType());
             if (Provider.class.isAssignableFrom(rawType)) {
-                    return PropertyValidationAccess.extractNestedType(Cast.<TypeToken<Provider<?>>>uncheckedCast(genericReturnType), Provider.class, 0);
+                return PropertyValidationAccess.extractNestedType(Cast.<TypeToken<Provider<?>>>uncheckedCast(genericReturnType), Provider.class, 0);
             }
             return genericReturnType;
         }
 
-        private static String propertyValidationMessage(Class<?> task, String qualifiedPropertyName, String validationMessage) {
+        private String propertyValidationMessage(Class<?> task, String qualifiedPropertyName, String validationMessage) {
             return String.format("Task type '%s': property '%s' %s.", task.getName(), qualifiedPropertyName, validationMessage);
         }
     }
@@ -192,8 +211,8 @@ public class PropertyValidationAccess {
 
         private String determinePropertyName(TypeToken<?> nestedType) {
             return Named.class.isAssignableFrom(nestedType.getRawType())
-                ? getQualifiedPropertyName("<name>")
-                : getPropertyName() + "*";
+                    ? getQualifiedPropertyName("<name>")
+                    : getPropertyName() + "*";
         }
 
         @Override
@@ -214,11 +233,6 @@ public class PropertyValidationAccess {
             TypeToken<?> nestedType = extractNestedType(Map.class, 1);
             nodeFactory.createAndAddToQueue(this, getQualifiedPropertyName("<key>"), nestedType, queue);
         }
-    }
-
-    private interface PropertyValidator {
-        @Nullable
-        String validate(boolean stricterValidation, PropertyMetadata metadata);
     }
 
     private static class InputOnFileTypeValidator implements PropertyValidator {

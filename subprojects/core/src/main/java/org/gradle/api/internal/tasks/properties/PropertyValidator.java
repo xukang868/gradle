@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,13 @@
  * limitations under the License.
  */
 
-package org.gradle.api.internal.project.taskfactory;
+package org.gradle.api.internal.tasks.properties;
 
-import org.gradle.api.internal.tasks.properties.PropertyValidationAccess;
+import org.gradle.internal.reflect.PropertyMetadata;
 
-/**
- * Left for backwards compatibility in Gradle build.
- *
- * @deprecated Use {@link PropertyValidationAccess} instead.
- */
-@Deprecated
-public class TaskPropertyValidationAccess extends PropertyValidationAccess {
+import javax.annotation.Nullable;
+
+public interface PropertyValidator {
+    @Nullable
+    String validate(boolean stricterValidation, PropertyMetadata metadata);
 }
