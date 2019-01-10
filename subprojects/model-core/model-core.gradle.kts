@@ -30,6 +30,7 @@ dependencies {
 
     api(project(":baseServices"))
     api(project(":coreApi"))
+    api(library("inject"))
     api(library("groovy"))
 
     implementation(project(":baseServicesGroovy"))
@@ -64,6 +65,7 @@ classycle {
         "org/gradle/model/internal/inspect/**",
         "org/gradle/api/internal/tasks/**",
         "org/gradle/model/internal/manage/schema/**",
-        "org/gradle/model/internal/type/**"
+        "org/gradle/model/internal/type/**",
+        "org/gradle/api/internal/plugins/*"
     ))
 }

@@ -18,9 +18,13 @@ package org.gradle.gradlebuild.profiling.buildscan
 import com.gradle.scan.plugin.BuildScanExtension
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.Task
 import org.gradle.api.plugins.quality.Checkstyle
 import org.gradle.api.plugins.quality.CodeNarc
 import org.gradle.api.reporting.Reporting
+import org.gradle.api.tasks.compile.AbstractCompile
+import org.gradle.build.ClasspathManifest
+import org.gradle.build.docs.CacheableAsciidoctorTask
 import org.gradle.gradlebuild.BuildEnvironment.isCiServer
 import org.gradle.gradlebuild.BuildEnvironment.isTravis
 import org.gradle.internal.classloader.ClassLoaderHierarchyHasher
@@ -35,6 +39,7 @@ import kotlin.collections.component2
 import kotlin.collections.filter
 import kotlin.collections.forEach
 import org.gradle.kotlin.dsl.*
+import java.util.concurrent.atomic.AtomicBoolean
 
 
 const val serverUrl = "https://e.grdev.net"
@@ -54,6 +59,9 @@ open class BuildScanPlugin : Plugin<Project> {
     private
     lateinit var buildScan: BuildScanExtension
 
+    private
+    val cacheMissTagged = AtomicBoolean(false)
+
     override fun apply(project: Project): Unit = project.run {
         apply(plugin = "com.gradle.build-scan")
         buildScan = the()
@@ -63,6 +71,7 @@ open class BuildScanPlugin : Plugin<Project> {
 
         if (isCiServer && !isTravis) {
             extractAllReportsFromCI()
+            monitorUnexpectedCacheMisses()
         }
 
         extractCheckstyleAndCodenarcData()
@@ -70,10 +79,54 @@ open class BuildScanPlugin : Plugin<Project> {
     }
 
     private
+    fun Project.monitorUnexpectedCacheMisses() {
+        gradle.taskGraph.afterTask {
+            if (isCacheMiss() && isNotTaggedYet()) {
+                buildScan.tag("CACHE_MISS")
+            }
+        }
+    }
+
+    private
+    fun isNotTaggedYet() = cacheMissTagged.compareAndSet(false, true)
+
+    private
+    fun Task.isCacheMiss() = !state.skipped && (isCompileCacheMiss() || isAsciidoctorCacheMiss())
+
+    private
+    fun Task.isCompileCacheMiss() = isMonitoredCompileTask() && !isExpectedCompileCacheMiss()
+
+    private
+    fun Task.isAsciidoctorCacheMiss() = isMonitoredAsciidoctorTask() && !isExpectedAsciidoctorCacheMiss()
+
+    private
+    fun Task.isMonitoredCompileTask() = this is AbstractCompile || this is ClasspathManifest
+
+    private
+    fun Task.isMonitoredAsciidoctorTask() = this is CacheableAsciidoctorTask
+
+    private
+    fun Task.isExpectedAsciidoctorCacheMiss() =
+    // Expected cache-miss for asciidoctor task:
+    // 1. CompileAll is the seed build for docs:distDocs
+    // 2. Gradle_Check_BuildDistributions is the seed build for other asciidoctor tasks
+        isInBuild("Gradle_Check_CompileAll", "Gradle_Check_BuildDistributions")
+
+    private
+    fun Task.isExpectedCompileCacheMiss() =
+    // Expected cache-miss:
+    // 1. CompileAll is the seed build
+    // 2. Gradleception which re-builds Gradle with a new Gradle version
+    // 3. buildScanPerformance test, which doesn't depend on compileAll
+        isInBuild("Gradle_Check_CompileAll", "Enterprise_Master_Components_GradleBuildScansPlugin_Performance_PerformanceLinux", "Gradle_Check_Gradleception")
+
+    private
+    fun Task.isInBuild(vararg buildTypeIds: String) = System.getenv("BUILD_TYPE_ID") in buildTypeIds
+
+    private
     fun Project.extractCheckstyleAndCodenarcData() {
         gradle.taskGraph.afterTask {
             if (state.failure != null) {
-
                 if (this is Checkstyle && reports.xml.destination.exists()) {
                     val checkstyle = Jsoup.parse(reports.xml.destination.readText(), "", Parser.xmlParser())
                     val errors = checkstyle.getElementsByTag("file").flatMap { file ->
